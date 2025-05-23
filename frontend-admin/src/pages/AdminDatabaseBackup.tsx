@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import SidebarToggle from "@/components/admin/SidebarToggle";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -47,6 +48,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useSidebar } from "@/contexts/SidebarContext";
+import { cn } from "@/lib/utils";
 
 interface BackupFile {
   id: number;
@@ -82,6 +85,7 @@ interface BackupResponse {
 
 const AdminDatabaseBackup = () => {
   const { getAuthHeaders } = useAdminAuth();
+  const { isCollapsed } = useSidebar();
   const { toast } = useToast();
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(null);
@@ -253,16 +257,22 @@ const AdminDatabaseBackup = () => {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100">
       <AdminSidebar activePath="/admin/database" />
       
-      <div className="flex-1 overflow-auto">
+      <div className={cn(
+        "main-content overflow-auto",
+        isCollapsed && "collapsed"
+      )}>
         <header className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-nihongo-darkBlue flex items-center gap-2">
-              <Database className="h-6 w-6" />
-              数据库备份管理
-            </h1>
+            <div className="flex items-center gap-4">
+              <SidebarToggle />
+              <h1 className="text-2xl font-bold text-nihongo-darkBlue flex items-center gap-2">
+                <Database className="h-6 w-6" />
+                数据库备份管理
+              </h1>
+            </div>
             <div className="flex items-center gap-4">
               <Button
                 onClick={fetchBackups}

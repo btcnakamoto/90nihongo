@@ -2,6 +2,338 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 自定义滚动条样式 */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-track-transparent {
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-thumb-gray-300 {
+  scrollbar-color: #d1d5db transparent;
+}
+
+.scrollbar-thumb-gray-400 {
+  scrollbar-color: #9ca3af transparent;
+}
+
+/* Webkit 浏览器滚动条样式 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.scrollbar-thin:hover::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* 滚动优化 */
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* 侧边栏固定时的页面布局优化 */
+@media (max-width: 1024px) {
+  .sidebar-fixed-layout {
+    margin-left: 0 !important;
+  }
+  
+  .sidebar-fixed {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .sidebar-fixed.show {
+    transform: translateX(0);
+  }
+}
+
+/* 防止水平滚动 */
+body {
+  overflow-x: hidden;
+}
+
+/* 侧边栏阴影增强 */
+.sidebar-shadow {
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 重新设计的侧边栏收起样式 */
+.admin-sidebar {
+  width: 288px; /* w-72 展开状态 */
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+  overflow: hidden;
+}
+
+.admin-sidebar.collapsed {
+  width: 80px; /* 收起状态，稍微宽一点以容纳图标和徽章 */
+}
+
+/* 主内容区域的适配 */
+.main-content {
+  margin-left: 288px; /* 展开状态 */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: margin-left;
+}
+
+.main-content.collapsed {
+  margin-left: 80px; /* 收起状态 */
+}
+
+/* 侧边栏内容的过渡效果 */
+.sidebar-content {
+  width: 100%; /* 使用100%宽度适应容器 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+/* 收起状态下完全重新布局 */
+.admin-sidebar.collapsed .sidebar-content {
+  transform: translateX(0); /* 不移动 */
+}
+
+/* 收起状态下的菜单项样式优化 */
+.admin-sidebar.collapsed .sidebar-item {
+  justify-content: center;
+  padding: 12px 8px; /* 减少左右padding */
+  margin: 4px 8px;
+  border-radius: 12px;
+  position: relative;
+  width: 64px; /* 固定宽度 */
+}
+
+/* 隐藏菜单项中的文字，但保留图标 */
+.admin-sidebar.collapsed .sidebar-item span {
+  display: none; /* 隐藏所有文字 */
+}
+
+/* 隐藏右侧的所有元素（徽章、箭头等） */
+.admin-sidebar.collapsed .sidebar-item .ml-auto {
+  display: none;
+}
+
+.admin-sidebar.collapsed .sidebar-item:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.admin-sidebar.collapsed .sidebar-item.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+}
+
+/* 收起状态下的图标样式 */
+.admin-sidebar.collapsed .sidebar-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.admin-sidebar.collapsed .sidebar-item:hover .sidebar-icon {
+  color: #6366f1;
+  transform: scale(1.1);
+}
+
+.admin-sidebar.collapsed .sidebar-item.active .sidebar-icon {
+  color: white;
+}
+
+/* 工具提示优化 */
+.admin-sidebar.collapsed .tooltip-trigger {
+  position: relative;
+}
+
+.admin-sidebar.collapsed .tooltip-trigger:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 16px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+  animation: tooltipIn 0.2s ease-out;
+}
+
+.admin-sidebar.collapsed .tooltip-trigger:hover::before {
+  content: '';
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 8px solid rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  animation: tooltipIn 0.2s ease-out;
+}
+
+@keyframes tooltipIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+/* 收起状态下的logo区域 */
+.admin-sidebar.collapsed .logo-area {
+  padding: 20px 8px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.admin-sidebar.collapsed .logo-area > div:not(.logo-icon) {
+  display: none; /* 隐藏Logo文字区域 */
+}
+
+.admin-sidebar.collapsed .logo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  transition: all 0.3s ease;
+}
+
+.admin-sidebar.collapsed .logo-icon:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+/* 收起状态下的导航区域 */
+.admin-sidebar.collapsed .nav-area {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  align-items: center;
+}
+
+/* 收起状态下的用户区域 */
+.admin-sidebar.collapsed .user-area {
+  padding: 16px 8px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.admin-sidebar.collapsed .user-area button {
+  display: none; /* 隐藏展开状态的用户按钮 */
+}
+
+.admin-sidebar.collapsed .user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.admin-sidebar.collapsed .user-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+/* 分组标题在收起状态下隐藏 */
+.admin-sidebar.collapsed .section-title {
+  display: none;
+}
+
+/* 切换按钮样式优化 */
+.sidebar-toggle {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(99, 102, 241, 0.1);
+  transform: scale(1.05);
+}
+
+/* 响应式优化 */
+@media (max-width: 1024px) {
+  .admin-sidebar {
+    width: 0;
+    overflow: hidden;
+  }
+  
+  .admin-sidebar.mobile-open {
+    width: 288px;
+    position: fixed;
+    z-index: 50;
+    background: white;
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+/* 减少动画的媒体查询 */
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar,
+  .main-content,
+  .sidebar-content,
+  .sidebar-item,
+  .sidebar-icon {
+    transition: none;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
