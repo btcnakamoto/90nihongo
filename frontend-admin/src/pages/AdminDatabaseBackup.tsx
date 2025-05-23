@@ -49,12 +49,19 @@ import axios from "axios";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface BackupFile {
+  id: number;
   filename: string;
   filepath: string;
+  description: string | null;
   size: number;
   size_human: string;
+  tables_count: number;
+  database_name: string;
+  database_driver: string;
+  status: string;
   created_at: string;
   created_at_human: string;
+  backup_duration: string;
 }
 
 interface DatabaseStatus {
@@ -393,6 +400,7 @@ const AdminDatabaseBackup = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>文件名</TableHead>
+                    <TableHead>描述</TableHead>
                     <TableHead>大小</TableHead>
                     <TableHead>创建时间</TableHead>
                     <TableHead className="text-right">操作</TableHead>
@@ -407,6 +415,7 @@ const AdminDatabaseBackup = () => {
                           {backup.filename}
                         </div>
                       </TableCell>
+                      <TableCell>{backup.description || "无"}</TableCell>
                       <TableCell>{backup.size_human}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

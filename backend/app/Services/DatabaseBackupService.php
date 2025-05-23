@@ -8,80 +8,123 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Exception;
+use App\Models\DatabaseBackup;
 
 class DatabaseBackupService
 {
     /**
      * 备份存储磁盘
      */
-    protected $disk = 'local';
+    protected string $disk;
     
     /**
      * 备份目录
      */
-    protected $backupPath = 'database_backups';
+    protected string $backupPath;
     
     /**
      * 最大保留备份数量
      */
-    protected $maxBackups = 30;
+    protected int $maxBackups;
 
     public function __construct()
     {
         $this->disk = config('backup.disk', 'local');
         $this->backupPath = config('backup.path', 'database_backups');
-        $this->maxBackups = config('backup.max_backups', 30);
+        $this->maxBackups = config('backup.max_files', 30);
     }
 
     /**
-     * 执行数据库备份
+     * 创建数据库备份
      */
     public function backup(string $description = null): array
     {
+        $connection = DB::connection();
+        $dbName = $connection->getDatabaseName();
+        $driver = $connection->getDriverName();
+        $tablesCount = $this->getTablesCount();
+        
+        // 生成备份文件名
+        $timestamp = now()->format('Y-m-d_H-i-s');
+        $filename = "backup_{$timestamp}.sql";
+        $filepath = "{$this->backupPath}/{$filename}";
+        
+        // 创建数据库记录
+        $backupRecord = DatabaseBackup::create([
+            'filename' => $filename,
+            'filepath' => $filepath,
+            'description' => $description,
+            'file_size' => 0,
+            'file_size_human' => '0 B',
+            'tables_count' => $tablesCount,
+            'database_name' => $dbName,
+            'database_driver' => $driver,
+            'status' => 'creating',
+            'backup_started_at' => now(),
+        ]);
+
         try {
-            $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-            $filename = "backup_{$timestamp}.sql";
-            $filepath = "{$this->backupPath}/{$filename}";
-            
-            // 获取数据库配置
-            $connection = DB::connection();
-            $dbConfig = $connection->getConfig();
-            
-            // 生成备份SQL
-            $backupContent = $this->generateBackupSQL($connection);
-            
-            // 保存备份文件
-            Storage::disk($this->disk)->put($filepath, $backupContent);
-            
-            // 记录备份信息
-            $backupInfo = [
+            Log::info('开始创建数据库备份', [
                 'filename' => $filename,
-                'filepath' => $filepath,
-                'size' => Storage::disk($this->disk)->size($filepath),
-                'created_at' => Carbon::now(),
-                'description' => $description,
-                'database' => $dbConfig['database'],
-                'tables_count' => $this->getTablesCount(),
-            ];
+                'database' => $dbName,
+                'description' => $description
+            ]);
+
+            // 生成备份SQL
+            $sql = $this->generateBackupSQL($connection);
+            
+            // 保存到文件
+            Storage::disk($this->disk)->put($filepath, $sql);
+            
+            // 获取文件大小
+            $fileSize = Storage::disk($this->disk)->size($filepath);
+            $fileSizeHuman = $this->formatBytes($fileSize);
+            
+            // 更新备份记录
+            $backupRecord->update([
+                'file_size' => $fileSize,
+                'file_size_human' => $fileSizeHuman,
+                'status' => 'completed',
+                'backup_completed_at' => now(),
+            ]);
+            
+            Log::info('数据库备份创建成功', [
+                'filename' => $filename,
+                'size' => $fileSizeHuman,
+                'tables' => $tablesCount
+            ]);
             
             // 清理旧备份
             $this->cleanupOldBackups();
             
-            Log::info('数据库备份成功', $backupInfo);
-            
             return [
                 'success' => true,
-                'message' => '数据库备份成功',
-                'data' => $backupInfo
+                'message' => '数据库备份创建成功',
+                'data' => [
+                    'id' => $backupRecord->id,
+                    'filename' => $filename,
+                    'filepath' => $filepath,
+                    'description' => $description,
+                    'size' => $fileSize,
+                    'size_human' => $fileSizeHuman,
+                    'tables_count' => $tablesCount,
+                    'database' => $dbName,
+                    'created_at' => $backupRecord->created_at->format('Y-m-d H:i:s'),
+                    'created_at_human' => $backupRecord->created_at_human,
+                ]
             ];
             
         } catch (Exception $e) {
-            Log::error('数据库备份失败: ' . $e->getMessage());
+            // 更新备份记录为失败状态
+            $backupRecord->update([
+                'status' => 'failed',
+            ]);
+            
+            Log::error('数据库备份创建失败: ' . $e->getMessage());
             
             return [
                 'success' => false,
-                'message' => '数据库备份失败: ' . $e->getMessage(),
-                'data' => null
+                'message' => '数据库备份创建失败: ' . $e->getMessage()
             ];
         }
     }
@@ -91,8 +134,8 @@ class DatabaseBackupService
      */
     protected function generateBackupSQL($connection): string
     {
-        $dbName = $connection->getDatabaseName();
         $driver = $connection->getDriverName();
+        $dbName = $connection->getDatabaseName();
         
         if ($driver === 'pgsql') {
             return $this->generatePostgreSQLBackup($connection, $dbName);
@@ -110,16 +153,16 @@ class DatabaseBackupService
     {
         $config = $connection->getConfig();
         $host = $config['host'];
-        $port = $config['port'] ?? 5432;
+        $port = $config['port'];
         $username = $config['username'];
         $password = $config['password'];
         
-        // 设置环境变量避免密码提示
+        // 设置PostgreSQL密码环境变量
         putenv("PGPASSWORD={$password}");
         
         // 生成pg_dump命令
         $command = sprintf(
-            'pg_dump -h %s -p %s -U %s -d %s --no-owner --no-privileges --clean --if-exists',
+            'pg_dump -h %s -p %s -U %s -d %s --no-password --verbose --clean --if-exists --create',
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($username),
@@ -143,7 +186,7 @@ class DatabaseBackupService
     {
         $config = $connection->getConfig();
         $host = $config['host'];
-        $port = $config['port'] ?? 3306;
+        $port = $config['port'];
         $username = $config['username'];
         $password = $config['password'];
         
@@ -195,35 +238,35 @@ class DatabaseBackupService
     }
 
     /**
-     * 获取备份文件列表
+     * 获取备份文件列表（从数据库）
      */
     public function getBackupList(): array
     {
         try {
-            $files = Storage::disk($this->disk)->files($this->backupPath);
-            $backups = [];
-            
-            foreach ($files as $file) {
-                if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
-                    $backups[] = [
-                        'filename' => basename($file),
-                        'filepath' => $file,
-                        'size' => Storage::disk($this->disk)->size($file),
-                        'size_human' => $this->formatBytes(Storage::disk($this->disk)->size($file)),
-                        'created_at' => Carbon::createFromTimestamp(Storage::disk($this->disk)->lastModified($file)),
-                        'created_at_human' => Carbon::createFromTimestamp(Storage::disk($this->disk)->lastModified($file))->diffForHumans(),
+            $backups = DatabaseBackup::completed()
+                ->latest()
+                ->get()
+                ->map(function ($backup) {
+                    return [
+                        'id' => $backup->id,
+                        'filename' => $backup->filename,
+                        'filepath' => $backup->filepath,
+                        'description' => $backup->description,
+                        'size' => $backup->file_size,
+                        'size_human' => $backup->file_size_human,
+                        'tables_count' => $backup->tables_count,
+                        'database_name' => $backup->database_name,
+                        'database_driver' => $backup->database_driver,
+                        'status' => $backup->status,
+                        'created_at' => $backup->created_at->format('Y-m-d H:i:s'),
+                        'created_at_human' => $backup->created_at_human,
+                        'backup_duration' => $backup->backup_duration,
                     ];
-                }
-            }
-            
-            // 按创建时间倒序排列
-            usort($backups, function($a, $b) {
-                return $b['created_at']->timestamp - $a['created_at']->timestamp;
-            });
+                });
             
             return [
                 'success' => true,
-                'data' => $backups
+                'data' => $backups->toArray()
             ];
             
         } catch (Exception $e) {
@@ -243,9 +286,17 @@ class DatabaseBackupService
     public function downloadBackup(string $filename): array
     {
         try {
-            $filepath = "{$this->backupPath}/{$filename}";
+            // 从数据库查找备份记录
+            $backup = DatabaseBackup::where('filename', $filename)->first();
             
-            if (!Storage::disk($this->disk)->exists($filepath)) {
+            if (!$backup) {
+                return [
+                    'success' => false,
+                    'message' => '备份记录不存在'
+                ];
+            }
+            
+            if (!Storage::disk($this->disk)->exists($backup->filepath)) {
                 return [
                     'success' => false,
                     'message' => '备份文件不存在'
@@ -254,9 +305,9 @@ class DatabaseBackupService
             
             return [
                 'success' => true,
-                'path' => Storage::disk($this->disk)->path($filepath),
-                'content' => Storage::disk($this->disk)->get($filepath),
-                'size' => Storage::disk($this->disk)->size($filepath)
+                'path' => Storage::disk($this->disk)->path($backup->filepath),
+                'content' => Storage::disk($this->disk)->get($backup->filepath),
+                'size' => $backup->file_size
             ];
             
         } catch (Exception $e) {
@@ -275,16 +326,23 @@ class DatabaseBackupService
     public function deleteBackup(string $filename): array
     {
         try {
-            $filepath = "{$this->backupPath}/{$filename}";
+            // 从数据库查找备份记录
+            $backup = DatabaseBackup::where('filename', $filename)->first();
             
-            if (!Storage::disk($this->disk)->exists($filepath)) {
+            if (!$backup) {
                 return [
                     'success' => false,
-                    'message' => '备份文件不存在'
+                    'message' => '备份记录不存在'
                 ];
             }
             
-            Storage::disk($this->disk)->delete($filepath);
+            // 删除物理文件
+            if (Storage::disk($this->disk)->exists($backup->filepath)) {
+                Storage::disk($this->disk)->delete($backup->filepath);
+            }
+            
+            // 删除数据库记录
+            $backup->delete();
             
             Log::info('删除备份文件: ' . $filename);
             
@@ -309,30 +367,23 @@ class DatabaseBackupService
     protected function cleanupOldBackups(): void
     {
         try {
-            $files = Storage::disk($this->disk)->files($this->backupPath);
-            $backupFiles = [];
+            $backups = DatabaseBackup::completed()
+                ->orderBy('created_at', 'desc')
+                ->get();
             
-            foreach ($files as $file) {
-                if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
-                    $backupFiles[] = [
-                        'file' => $file,
-                        'time' => Storage::disk($this->disk)->lastModified($file)
-                    ];
-                }
-            }
-            
-            // 按时间排序，保留最新的文件
-            usort($backupFiles, function($a, $b) {
-                return $b['time'] - $a['time'];
-            });
-            
-            // 删除超过限制的旧文件
-            if (count($backupFiles) > $this->maxBackups) {
-                $filesToDelete = array_slice($backupFiles, $this->maxBackups);
+            if ($backups->count() > $this->maxBackups) {
+                $backupsToDelete = $backups->slice($this->maxBackups);
                 
-                foreach ($filesToDelete as $fileInfo) {
-                    Storage::disk($this->disk)->delete($fileInfo['file']);
-                    Log::info('清理旧备份文件: ' . $fileInfo['file']);
+                foreach ($backupsToDelete as $backup) {
+                    // 删除物理文件
+                    if (Storage::disk($this->disk)->exists($backup->filepath)) {
+                        Storage::disk($this->disk)->delete($backup->filepath);
+                    }
+                    
+                    // 删除数据库记录
+                    $backup->delete();
+                    
+                    Log::info('清理旧备份文件: ' . $backup->filename);
                 }
             }
             
@@ -361,19 +412,26 @@ class DatabaseBackupService
     public function restore(string $filename): array
     {
         try {
-            $filepath = "{$this->backupPath}/{$filename}";
+            // 从数据库查找备份记录
+            $backup = DatabaseBackup::where('filename', $filename)->first();
             
-            if (!Storage::disk($this->disk)->exists($filepath)) {
+            if (!$backup) {
+                return [
+                    'success' => false,
+                    'message' => '备份记录不存在'
+                ];
+            }
+            
+            if (!Storage::disk($this->disk)->exists($backup->filepath)) {
                 return [
                     'success' => false,
                     'message' => '备份文件不存在'
                 ];
             }
             
-            $sqlContent = Storage::disk($this->disk)->get($filepath);
+            $sql = Storage::disk($this->disk)->get($backup->filepath);
             
-            // 执行SQL恢复
-            DB::unprepared($sqlContent);
+            DB::unprepared($sql);
             
             Log::info('数据库恢复成功: ' . $filename);
             

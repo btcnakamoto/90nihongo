@@ -61,7 +61,7 @@ class DatabaseBackupCommand extends Command
                 ['文件大小', $this->formatBytes($data['size'])],
                 ['数据库', $data['database']],
                 ['表数量', $data['tables_count']],
-                ['创建时间', $data['created_at']->format('Y-m-d H:i:s')],
+                ['创建时间', $data['created_at']],
                 ['描述', $data['description'] ?? '无'],
             ]);
             
