@@ -18,7 +18,8 @@ import {
   Shield,
   Activity,
   Layers,
-  HelpCircle
+  HelpCircle,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -196,6 +197,13 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
               href="/admin/community" 
               isActive={activePath === "/admin/community"}
               count={5}
+            />
+            <SidebarItem 
+              icon={CreditCard} 
+              text="订阅管理" 
+              href="/admin/subscriptions" 
+              isActive={activePath === "/admin/subscriptions"}
+              count={3}
             />
           </SidebarSection>
 
