@@ -13,11 +13,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // 创建管理员账户
+        $this->call([
+            AdminSeeder::class,
+            UserSeeder::class,
         ]);
+
+        $this->command->info('Database seeding completed!');
+        $this->command->line('You can now use the following accounts:');
+        $this->command->line('');
+        $this->command->line('=== Admin Accounts ===');
+        $this->command->line('Super Admin: admin@90nihongo.com / admin123');
+        $this->command->line('Admin: manager@90nihongo.com / manager123');
+        $this->command->line('Moderator: moderator@90nihongo.com / moderator123');
+        $this->command->line('');
+        $this->command->line('=== Test Users ===');
+        $this->command->line('10 test users created with password: password123');
+        $this->command->line('Examples: zhangsan@example.com, lisi@example.com');
     }
 }

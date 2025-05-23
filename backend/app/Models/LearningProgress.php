@@ -10,9 +10,12 @@ class LearningProgress extends Model
     use HasFactory;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * 数据表名
+     */
+    protected $table = 'learning_progress';
+
+    /**
+     * 可批量赋值的属性
      */
     protected $fillable = [
         'user_id',
@@ -28,9 +31,7 @@ class LearningProgress extends Model
     ];
 
     /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
+     * 属性类型转换
      */
     protected $casts = [
         'completed_modules' => 'array',
@@ -38,7 +39,7 @@ class LearningProgress extends Model
     ];
 
     /**
-     * 获取该学习进度所属的用户
+     * 获取关联的用户
      */
     public function user()
     {

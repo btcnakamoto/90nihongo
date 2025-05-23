@@ -17,8 +17,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
     
-    // 资源管理
+    // 用户管理
     Route::apiResource('/users', UserController::class);
+    Route::post('/users/batch-action', [UserController::class, 'batchAction']);
+    Route::get('/users-stats', [UserController::class, 'stats']);
+    
+    // 内容管理
     Route::apiResource('/content', ContentController::class);
     
     // 数据库备份管理
