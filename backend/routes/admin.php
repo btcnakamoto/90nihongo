@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
 
 // 登录接口（无需认证）
 Route::post('/login', [AuthController::class, 'login']);
@@ -19,6 +20,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // 资源管理
     Route::apiResource('/users', UserController::class);
     Route::apiResource('/content', ContentController::class);
+    
+    // 数据库备份管理
+    Route::prefix('database')->group(function () {
+        Route::get('/status', [DatabaseBackupController::class, 'status']);
+        Route::get('/backups', [DatabaseBackupController::class, 'index']);
+        Route::post('/backups', [DatabaseBackupController::class, 'store']);
+        Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);
+        Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);
+        Route::post('/restore', [DatabaseBackupController::class, 'restore']);
+    });
     
     // 统计信息
     Route::get('/stats', function () {

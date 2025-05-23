@@ -18,6 +18,7 @@ interface AdminAuthContextType {
   logoutAll: () => Promise<void>;
   token: string | null;
   isLoading: boolean;
+  getAuthHeaders: () => Record<string, string>;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -83,6 +84,14 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getAuthHeaders = () => {
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+  };
+
   // 验证token有效性
   useEffect(() => {
     if (token && !admin) {
@@ -114,7 +123,8 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
         logout, 
         logoutAll,
         token,
-        isLoading
+        isLoading,
+        getAuthHeaders
       }}
     >
       {children}

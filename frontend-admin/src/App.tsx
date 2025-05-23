@@ -9,6 +9,7 @@ import AdminUserManagement from "./pages/AdminUserManagement";
 import AdminContentManagement from "./pages/AdminContentManagement";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminSettings from "./pages/AdminSettings";
+import AdminDatabaseBackup from "./pages/AdminDatabaseBackup";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { AdminAuthProvider, useAdminAuth } from "./contexts/AdminAuthContext";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/admin/users" element={<ProtectedRoute><AdminUserManagement /></ProtectedRoute>} />
             <Route path="/admin/content" element={<ProtectedRoute><AdminContentManagement /></ProtectedRoute>} />
             <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
+            <Route path="/admin/database" element={<ProtectedRoute><AdminDatabaseBackup /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

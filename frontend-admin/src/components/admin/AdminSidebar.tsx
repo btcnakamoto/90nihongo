@@ -12,7 +12,8 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  User
+  User,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -96,6 +97,12 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
           text="社区管理" 
           href="/admin/community" 
           isActive={activePath === "/admin/community"} 
+        />
+        <SidebarItem 
+          icon={Database} 
+          text="数据库备份" 
+          href="/admin/database" 
+          isActive={activePath === "/admin/database"} 
         />
         <SidebarItem 
           icon={Bell} 

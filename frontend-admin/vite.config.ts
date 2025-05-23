@@ -8,13 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8081,
-    proxy: {
-      '/admin': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        secure: false,
-      }
-    }
+    historyApiFallback: true,
   },
   plugins: [
     react(),
