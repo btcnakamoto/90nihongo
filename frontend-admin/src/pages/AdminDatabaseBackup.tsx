@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import SidebarToggle from "@/components/admin/SidebarToggle";
+import TopNavbar from "@/components/admin/TopNavbar";
+import PageHeader from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -257,87 +258,84 @@ const AdminDatabaseBackup = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar activePath="/admin/database" />
       
       <div className={cn(
-        "main-content overflow-auto",
+        "main-content flex-1 flex flex-col transition-all duration-300",
         isCollapsed && "collapsed"
       )}>
-        <header className="bg-white border-b border-gray-200 px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <SidebarToggle />
-              <h1 className="text-2xl font-bold text-nihongo-darkBlue flex items-center gap-2">
-                <Database className="h-6 w-6" />
-                数据库备份管理
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button
-                onClick={fetchBackups}
-                variant="outline"
-                size="sm"
-                disabled={loading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                刷新
-              </Button>
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    创建备份
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>创建数据库备份</DialogTitle>
-                    <DialogDescription>
-                      为当前数据库创建一个新的备份文件。您可以添加描述来标识这个备份。
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="description">备份描述 (可选)</Label>
-                      <Input
-                        id="description"
-                        placeholder="例如：发布前备份、重要更新前备份..."
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        maxLength={255}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowCreateDialog(false)}
-                      disabled={createLoading}
-                    >
-                      取消
-                    </Button>
-                    <Button onClick={createBackup} disabled={createLoading}>
-                      {createLoading ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          创建中...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-2" />
-                          创建备份
-                        </>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-        </header>
+        {/* 统一顶部导航栏 */}
+        <TopNavbar />
         
-        <main className="px-8 py-6 space-y-6">
+        {/* 页面标题区域 */}
+        <PageHeader 
+          title="数据库备份管理" 
+          description="管理数据库备份文件，创建新备份和下载现有备份"
+        >
+          <Button
+            onClick={fetchBackups}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-nihongo-indigo hover:bg-nihongo-darkBlue">
+                <Plus className="h-4 w-4 mr-2" />
+                创建备份
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>创建数据库备份</DialogTitle>
+                <DialogDescription>
+                  为当前数据库创建一个新的备份文件。您可以添加描述来标识这个备份。
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="description">备份描述 (可选)</Label>
+                  <Input
+                    id="description"
+                    placeholder="例如：发布前备份、重要更新前备份..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCreateDialog(false)}
+                  disabled={createLoading}
+                >
+                  取消
+                </Button>
+                <Button onClick={createBackup} disabled={createLoading}>
+                  {createLoading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      创建中...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      创建备份
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </PageHeader>
+        
+        {/* 主要内容区域 */}
+        <main className="flex-1 p-6 overflow-auto space-y-6">
           {/* 数据库状态卡片 */}
           {databaseStatus && (
             <div className="bg-white rounded-lg border border-gray-200 p-6">
