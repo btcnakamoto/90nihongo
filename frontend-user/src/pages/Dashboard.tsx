@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import DayProgress from '@/components/DayProgress';
@@ -18,9 +17,9 @@ const Dashboard = () => {
   // Study modules
   const studyModules = [
     {
-      title: "聴解練習",
-      subtitle: "Listening Practice",
-      description: "Practice understanding spoken Japanese with restaurant conversations.",
+      title: "听力练习",
+      subtitle: "听力训练",
+      description: "通过餐厅场景对话训练日语听力理解能力。",
       progress: 50,
       link: "/listening",
       color: "indigo" as const,
@@ -32,9 +31,9 @@ const Dashboard = () => {
       )
     },
     {
-      title: "会話練習",
-      subtitle: "Speaking Practice",
-      description: "Practice speaking with AI dialogue partner about ordering food.",
+      title: "口语练习",
+      subtitle: "口语训练",
+      description: "与AI对话伙伴练习餐厅点餐相关口语表达。",
       progress: 25,
       link: "/speaking",
       color: "pink" as const,
@@ -48,9 +47,9 @@ const Dashboard = () => {
       )
     },
     {
-      title: "語彙学習",
-      subtitle: "Vocabulary Study",
-      description: "Learn essential food-related vocabulary with flashcards.",
+      title: "词汇学习",
+      subtitle: "词汇卡片",
+      description: "通过卡片记忆餐饮相关的高频词汇。",
       progress: 75,
       link: "/vocabulary",
       color: "red" as const,
@@ -62,9 +61,9 @@ const Dashboard = () => {
       )
     },
     {
-      title: "文法ポイント",
-      subtitle: "Grammar Points",
-      description: "Study essential grammar patterns for ordering and describing.",
+      title: "语法要点",
+      subtitle: "语法讲解",
+      description: "学习点餐和描述食物常用的语法句型。",
       progress: 0,
       link: "/grammar",
       color: "navy" as const,
@@ -84,8 +83,8 @@ const Dashboard = () => {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-japan-navy">こんにちは、学習者さん!</h1>
-            <p className="text-japan-stone mt-1">Welcome back to your Japanese learning journey.</p>
+            <h1 className="text-3xl font-display font-bold text-japan-navy">你好，学员！</h1>
+            <p className="text-japan-stone mt-1">欢迎回到你的日语学习之旅。</p>
           </div>
           <DayProgress currentDay={currentDay} totalDays={totalDays} />
         </div>
@@ -103,12 +102,12 @@ const Dashboard = () => {
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                 </svg>
-                今日の学習
-                <span className="text-sm text-japan-stone ml-2">Today's Learning</span>
+                今日的学习
+                <span className="text-sm text-japan-stone ml-2">今日进度</span>
               </h2>
               <div className="text-sm">
                 <span className="font-medium">{todayCompleted}/{todayTotal}</span> 
-                <span className="text-japan-stone ml-1">completed</span>
+                <span className="text-japan-stone ml-1">已完成</span>
               </div>
             </div>
             
@@ -125,20 +124,20 @@ const Dashboard = () => {
               to="/daily" 
               className="block w-full bg-japan-indigo hover:bg-japan-indigo/90 text-white font-medium py-3 px-4 rounded-lg text-center mb-6 transition-colors"
             >
-              <span className="font-display">今日の学習を続ける</span>
-              <span className="block text-sm opacity-90 mt-1">Continue Today's Learning</span>
+              <span className="font-display">继续今日学习</span>
+              <span className="block text-sm opacity-90 mt-1">点击进入今日学习内容</span>
             </Link>
             
             {/* Topic Overview */}
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
               <h3 className="font-display text-lg mb-2 text-japan-navy">
-                第５日目: レストランでの注文
+                第5天：餐厅点餐
               </h3>
               <p className="text-sm text-japan-stone mb-2">
-                Day 5: Ordering at Restaurants
+                Day 5：餐厅点餐
               </p>
               <p className="text-sm text-gray-600">
-                Today you'll learn how to order food at restaurants, understand menu items, and handle basic restaurant conversations in Japanese.
+                今天你将学习如何在餐厅点餐、理解菜单内容，以及应对基础的餐厅对话。
               </p>
             </div>
           </div>
@@ -150,8 +149,8 @@ const Dashboard = () => {
               <line x1="3" y1="9" x2="21" y2="9"></line>
               <line x1="9" y1="21" x2="9" y2="9"></line>
             </svg>
-            学習モジュール
-            <span className="text-sm text-japan-stone ml-2">Study Modules</span>
+            学习模块
+            <span className="text-sm text-japan-stone ml-2">模块列表</span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
             {studyModules.map((module, index) => (
@@ -174,8 +173,8 @@ const Dashboard = () => {
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
-            クイック練習
-            <span className="text-sm text-japan-stone ml-2">Quick Practice</span>
+            快速练习
+            <span className="text-sm text-japan-stone ml-2">随时巩固</span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <Link to="/quick-practice/phrases" className="paper-card p-4 flex flex-col items-center text-center hover:border-japan-pink/30 transition-colors group">
@@ -184,8 +183,8 @@ const Dashboard = () => {
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                 </svg>
               </div>
-              <h3 className="font-display font-medium mb-1">フレーズ復習</h3>
-              <p className="text-xs text-japan-stone">Phrase Review (5min)</p>
+              <h3 className="font-display font-medium mb-1">短语复习</h3>
+              <p className="text-xs text-japan-stone">5分钟巩固常用表达</p>
             </Link>
             
             <Link to="/quick-practice/flashcards" className="paper-card p-4 flex flex-col items-center text-center hover:border-japan-pink/30 transition-colors group">
@@ -196,8 +195,8 @@ const Dashboard = () => {
                   <path d="M18 12H6"></path>
                 </svg>
               </div>
-              <h3 className="font-display font-medium mb-1">単語カード</h3>
-              <p className="text-xs text-japan-stone">Vocabulary Cards (3min)</p>
+              <h3 className="font-display font-medium mb-1">单词卡片</h3>
+              <p className="text-xs text-japan-stone">3分钟记忆词汇</p>
             </Link>
             
             <Link to="/quick-practice/quiz" className="paper-card p-4 flex flex-col items-center text-center hover:border-japan-pink/30 transition-colors group">
@@ -208,8 +207,8 @@ const Dashboard = () => {
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
               </div>
-              <h3 className="font-display font-medium mb-1">クイッククイズ</h3>
-              <p className="text-xs text-japan-stone">Quick Quiz (2min)</p>
+              <h3 className="font-display font-medium mb-1">快速测试</h3>
+              <p className="text-xs text-japan-stone">快速测试（2分钟）</p>
             </Link>
           </div>
         </div>
@@ -227,8 +226,7 @@ const Dashboard = () => {
                 <path d="M18 20V4"></path>
                 <path d="M6 20v-4"></path>
               </svg>
-              学習統計
-              <span className="text-sm text-japan-stone ml-2">Learning Stats</span>
+              学习统计
             </h2>
             
             <div className="space-y-4">
@@ -241,11 +239,10 @@ const Dashboard = () => {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="font-medium">学習連続日数</h3>
-                    <p className="text-xs text-japan-stone">Study Streak</p>
+                    <h3 className="font-medium">学习连续天数</h3>
                   </div>
                 </div>
-                <div className="text-lg font-bold text-japan-indigo">5日</div>
+                <div className="text-lg font-bold text-japan-indigo">5天</div>
               </div>
               
               {/* Vocabulary Mastered */}
@@ -258,8 +255,7 @@ const Dashboard = () => {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="font-medium">習得単語数</h3>
-                    <p className="text-xs text-japan-stone">Words Mastered</p>
+                    <h3 className="font-medium">习得单词数</h3>
                   </div>
                 </div>
                 <div className="text-lg font-bold text-japan-pink">42</div>
@@ -275,11 +271,10 @@ const Dashboard = () => {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="font-medium">総練習時間</h3>
-                    <p className="text-xs text-japan-stone">Total Practice Time</p>
+                    <h3 className="font-medium">总练习时间</h3>
                   </div>
                 </div>
-                <div className="text-lg font-bold text-japan-navy">187分</div>
+                <div className="text-lg font-bold text-japan-navy">187分钟</div>
               </div>
             </div>
             
@@ -289,8 +284,7 @@ const Dashboard = () => {
                 to="/stats" 
                 className="text-sm font-medium text-japan-indigo hover:underline inline-flex items-center"
               >
-                週間サマリーを見る
-                <span className="text-xs ml-1">(View Weekly Summary)</span>
+                周总结报告
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1">
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                   <polyline points="12 5 19 12 12 19"></polyline>

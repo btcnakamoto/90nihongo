@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -29,119 +28,119 @@ const LearningPath = ({ currentDay }: LearningPathProps) => {
   const stages: LearningStage[] = [
     {
       title: "生活必需品",
-      subtitle: "Daily Essentials",
+      subtitle: "日常必备表达",
       color: "#293B97", // indigo
       startDay: 1,
       endDay: 20,
       milestones: [
         { 
           day: 5, 
-          title: "基本挨拶マスター", 
-          description: "Master basic greetings",
+          title: "基础问候语掌握", 
+          description: "掌握常用的日常问候语",
           isCompleted: currentDay > 5,
           isActive: currentDay === 5
         },
         { 
           day: 10, 
-          title: "日常会話入門", 
-          description: "Introduction to daily conversations",
+          title: "日常会话入门", 
+          description: "学会简单的日常交流",
           isCompleted: currentDay > 10,
           isActive: currentDay === 10
         },
         { 
           day: 20, 
-          title: "ショッピング会話", 
-          description: "Shopping conversations",
+          title: "购物场景会话", 
+          description: "掌握购物相关表达",
           isCompleted: currentDay > 20,
           isActive: currentDay === 20
         }
       ]
     },
     {
-      title: "職場コミュニケーション",
-      subtitle: "Workplace Communication",
+      title: "职场交流",
+      subtitle: "工作场所沟通",
       color: "#EA698B", // pink
       startDay: 21,
       endDay: 45,
       milestones: [
         { 
           day: 25, 
-          title: "仕事の基本フレーズ", 
-          description: "Basic workplace phrases",
+          title: "工作基本用语", 
+          description: "掌握职场常用表达",
           isCompleted: currentDay > 25,
           isActive: currentDay === 25
         },
         { 
           day: 35, 
-          title: "電話対応", 
-          description: "Phone call responses",
+          title: "电话应答", 
+          description: "学会电话沟通技巧",
           isCompleted: currentDay > 35,
           isActive: currentDay === 35
         },
         { 
           day: 45, 
-          title: "シンプルなプレゼン", 
-          description: "Simple presentations",
+          title: "简单演讲", 
+          description: "能进行简短的职场演讲",
           isCompleted: currentDay > 45,
           isActive: currentDay === 45
         }
       ]
     },
     {
-      title: "表現力の向上",
-      subtitle: "Expressive Communication",
+      title: "表达能力提升",
+      subtitle: "表达更丰富",
       color: "#D64045", // red
       startDay: 46,
       endDay: 70,
       milestones: [
         { 
           day: 50, 
-          title: "感情表現", 
-          description: "Expressing emotions",
+          title: "情感表达", 
+          description: "学会表达情绪和感受",
           isCompleted: currentDay > 50,
           isActive: currentDay === 50
         },
         { 
           day: 60, 
-          title: "議論の基本", 
-          description: "Basics of discussion",
+          title: "讨论基础", 
+          description: "掌握讨论和交流的基本技巧",
           isCompleted: currentDay > 60,
           isActive: currentDay === 60
         },
         { 
           day: 70, 
-          title: "自分の意見を述べる", 
-          description: "Expressing your opinion",
+          title: "表达个人观点", 
+          description: "能够清晰表达自己的意见",
           isCompleted: currentDay > 70,
           isActive: currentDay === 70
         }
       ]
     },
     {
-      title: "流暢なコミュニケーション",
-      subtitle: "Fluent Communication",
+      title: "流利沟通",
+      subtitle: "高级交流能力",
       color: "#1D1A39", // navy
       startDay: 71,
       endDay: 90,
       milestones: [
         { 
           day: 75, 
-          title: "複雑な会話", 
-          description: "Complex conversations",
+          title: "复杂对话", 
+          description: "能参与更复杂的交流",
           isCompleted: currentDay > 75,
           isActive: currentDay === 75
         },
         { 
           day: 85, 
-          title: "自然な表現", 
-          description: "Natural expressions",
+          title: "自然表达", 
+          description: "表达更地道自然",
           isCompleted: currentDay > 85,
           isActive: currentDay === 85
         },
         { 
           day: 90, 
-          title: "実践的な会話力", 
-          description: "Practical conversation skills",
+          title: "实用会话能力", 
+          description: "具备实际生活中的会话能力",
           isCompleted: currentDay > 90,
           isActive: currentDay === 90
         }
@@ -163,14 +162,13 @@ const LearningPath = ({ currentDay }: LearningPathProps) => {
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-100 p-5">
-      <h2 className="text-xl font-display font-medium text-japan-navy mb-4 flex items-center">
+    <div className="bg-white rounded-lg shadow-md border border-gray-100 p-5" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+      <h2 className="text-xl font-display font-medium text-japan-navy mb-4 flex items-center" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
-        学習パス
-        <span className="text-sm text-japan-stone ml-2">Learning Path</span>
+        学习路径
       </h2>
 
       <div className="space-y-4">
@@ -199,9 +197,8 @@ const LearningPath = ({ currentDay }: LearningPathProps) => {
                 }}
               >
                 <div>
-                  <h3 className="font-display font-medium">
+                  <h3 className="font-display font-medium zh-font" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
                     {stage.title}
-                    <span className="text-xs text-japan-stone ml-2">({stage.subtitle})</span>
                   </h3>
                   <p className="text-xs text-japan-stone">
                     Day {stage.startDay} - {stage.endDay}
@@ -210,12 +207,12 @@ const LearningPath = ({ currentDay }: LearningPathProps) => {
                 <div className="flex items-center">
                   {isCompleted && (
                     <span className="mr-2 text-green-500 bg-green-50 px-2 py-1 rounded-full text-xs font-medium">
-                      完了 (Completed)
+                      完成
                     </span>
                   )}
                   {isCurrentStage && (
                     <span className="mr-2 text-blue-500 bg-blue-50 px-2 py-1 rounded-full text-xs font-medium">
-                      進行中 (Current)
+                      进行中
                     </span>
                   )}
                   <svg 
@@ -264,10 +261,10 @@ const LearningPath = ({ currentDay }: LearningPathProps) => {
                           >
                             <div className="flex justify-between items-start">
                               <div>
-                                <h4 className="font-display font-medium">
+                                <h4 className="font-display font-medium" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
                                   {milestone.title}
                                 </h4>
-                                <p className="text-xs text-japan-stone">
+                                <p className="text-xs text-japan-stone" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
                                   {milestone.description}
                                 </p>
                               </div>
@@ -282,7 +279,7 @@ const LearningPath = ({ currentDay }: LearningPathProps) => {
                                   to="/daily" 
                                   className="text-xs font-medium text-japan-indigo hover:underline"
                                 >
-                                  今日の学習を始める (Start today's lesson) →
+                                  今日的课程 →
                                 </Link>
                               </div>
                             )}

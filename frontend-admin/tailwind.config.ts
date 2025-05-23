@@ -63,15 +63,17 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-                // Japanese-inspired color theme
-                japan: {
-                    indigo: '#293B97', // Deep indigo - primary action color
-                    pink: '#EA698B',   // Sakura pink - highlights and accents
-                    red: '#D64045',    // Traditional red - warnings/important items
-                    navy: '#1D1A39',   // Deep navy - dark backgrounds 
-                    cream: '#F7F3E3',  // Paper cream - light backgrounds
-                    stone: '#A69F98',  // Stone gray - neutral elements
-                }
+				// Japanese-inspired color palette
+				nihongo: {
+					red: '#D05A6E',      // Traditional Japanese red (aka)
+					indigo: '#5B8AC1',   // Japanese indigo (ai-iro)
+					green: '#7BA696',    // Japanese green (midori)
+					pink: '#F2C0C7',     // Sakura pink
+					gray: '#787C7A',     // Japanese gray (nezumi-iro)
+					beige: '#D6CFC7',    // Traditional paper color
+					darkBlue: '#1A2639', // Deep indigo blue
+					lightBlue: '#D4EEFF', // Light sky blue
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -94,33 +96,12 @@ export default {
 					to: {
 						height: '0'
 					}
-				},
-                'float': {
-                    '0%, 100%': { transform: 'translateY(0)' },
-                    '50%': { transform: 'translateY(-10px)' }
-                },
-                'wave': {
-                    '0%': { transform: 'rotate(0deg)' },
-                    '10%': { transform: 'rotate(14deg)' },
-                    '20%': { transform: 'rotate(-8deg)' },
-                    '30%': { transform: 'rotate(14deg)' },
-                    '40%': { transform: 'rotate(-4deg)' },
-                    '50%': { transform: 'rotate(10deg)' },
-                    '60%': { transform: 'rotate(0deg)' },
-                    '100%': { transform: 'rotate(0deg)' }
-                }
+				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out',
-                'float': 'float 6s ease-in-out infinite',
-                'wave': 'wave 2.5s ease-in-out infinite'
-			},
-            fontFamily: {
-                sans: ['Noto Sans JP', 'sans-serif'],
-                display: ['Zen Maru Gothic', 'sans-serif'],
-                mono: ['Source Code Pro', 'monospace'],
-            }
+				'accordion-up': 'accordion-up 0.2s ease-out'
+			}
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

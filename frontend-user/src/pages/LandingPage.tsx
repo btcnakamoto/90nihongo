@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,7 +26,7 @@ const LandingPage = () => {
                     立即开始学习
                   </Button>
                 </Link>
-                <Link to="/">
+                <Link to="/dashboard">
                   <Button size="lg" variant="outline" className="border-japan-indigo text-japan-indigo hover:bg-japan-indigo/10">
                     了解课程设置
                   </Button>

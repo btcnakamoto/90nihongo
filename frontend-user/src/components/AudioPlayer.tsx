@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +9,11 @@ interface AudioPlayerProps {
   japaneseText?: string;
   onPlaybackComplete?: () => void;
   className?: string;
+  shadowingMode?: boolean;
+  playbackSpeed?: number;
+  repeatInterval?: number;
+  isRecording?: boolean;
+  onRecordingComplete?: (blob: Blob) => void;
 }
 
 const AudioPlayer = ({ 
@@ -19,13 +23,20 @@ const AudioPlayer = ({
   transcript = '', 
   japaneseText = '',
   onPlaybackComplete, 
-  className 
+  className,
+  shadowingMode = false,
+  playbackSpeed = 1,
+  repeatInterval = 0,
+  isRecording = false,
+  onRecordingComplete
 }: AudioPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showJapaneseText, setShowJapaneseText] = useState(true);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recordedChunks = useRef<Blob[]>([]);
   
   // Set up audio element and listeners
   useEffect(() => {
@@ -42,11 +53,22 @@ const AudioPlayer = ({
     
     const handleEnded = () => {
       setIsPlaying(false);
-      setCurrentTime(0);
-      if (onPlaybackComplete) {
-        onPlaybackComplete();
+      if (repeatInterval > 0) {
+        setTimeout(() => {
+          audio.currentTime = 0;
+          audio.play();
+          setIsPlaying(true);
+        }, repeatInterval * 1000);
+      } else {
+        setCurrentTime(0);
+        if (onPlaybackComplete) {
+          onPlaybackComplete();
+        }
       }
     };
+    
+    // Set playback speed
+    audio.playbackRate = playbackSpeed;
     
     // Event listeners
     audio.addEventListener('loadeddata', setAudioData);
@@ -60,7 +82,42 @@ const AudioPlayer = ({
       audio.removeEventListener('ended', handleEnded);
       audio.pause();
     };
-  }, [src, onPlaybackComplete]);
+  }, [src, onPlaybackComplete, repeatInterval, playbackSpeed]);
+
+  // Handle recording
+  useEffect(() => {
+    if (isRecording) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          const recorder = new MediaRecorder(stream);
+          setMediaRecorder(recorder);
+          
+          recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              recordedChunks.current.push(e.data);
+            }
+          };
+          
+          recorder.onstop = () => {
+            const blob = new Blob(recordedChunks.current, {
+              type: 'audio/webm'
+            });
+            if (onRecordingComplete) {
+              onRecordingComplete(blob);
+            }
+            recordedChunks.current = [];
+          };
+          
+          recorder.start();
+        })
+        .catch(err => {
+          console.error('录音失败:', err);
+        });
+    } else if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      setMediaRecorder(null);
+    }
+  }, [isRecording, onRecordingComplete]);
   
   // Handle play/pause
   const togglePlay = () => {
@@ -142,19 +199,34 @@ const AudioPlayer = ({
           </div>
         </div>
       </div>
+
+      {/* Shadowing Mode Info */}
+      {shadowingMode && (
+        <div className="mt-2 text-xs text-japan-stone">
+          <div className="flex items-center space-x-2">
+            <span>播放速度: {playbackSpeed}x</span>
+            {repeatInterval > 0 && (
+              <span>| 重复间隔: {repeatInterval}秒</span>
+            )}
+            {isRecording && (
+              <span className="text-red-500 animate-pulse">录音中...</span>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Transcript Toggle (if applicable) */}
       {showTranscript && transcript && (
         <div className="mt-3 pt-2 border-t border-gray-100">
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-japan-navy">
-              {showJapaneseText ? '日本語 (Japanese)' : 'English'}
+              {showJapaneseText ? '日本語' : '中文'}
             </span>
             <button 
               onClick={() => setShowJapaneseText(!showJapaneseText)}
               className="text-xs text-japan-indigo hover:underline"
             >
-              {showJapaneseText ? 'Show English' : 'Show Japanese'}
+              {showJapaneseText ? '显示中文' : '显示日语'}
             </button>
           </div>
           <div className="p-2 bg-gray-50 rounded-md text-sm">

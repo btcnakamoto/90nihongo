@@ -6,7 +6,7 @@ use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvi
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Limit;
+use Illuminate\Cache\RateLimiting\Limit;
 
 class RouteServiceProvider extends ServiceProvider
 {
@@ -17,16 +17,18 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         $this->routes(function () {
+            // 用户端API路由
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
+            // Web路由
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
                 
-            // 添加管理端API路由
+            // 管理端API路由
             Route::middleware('api')
-                ->prefix('api')
+                ->prefix('admin')  // 修改前缀以区分管理端API
                 ->group(base_path('routes/admin.php'));
         });
     }

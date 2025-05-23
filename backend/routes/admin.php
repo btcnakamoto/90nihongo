@@ -1,33 +1,35 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ContentController;
 
-/*
-|--------------------------------------------------------------------------
-| Admin API Routes
-|--------------------------------------------------------------------------
-|
-| 这里是所有管理端API路由，使用 "admin" 中间件组进行保护
-|
-*/
+// 登录接口（无需认证）
+Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware(['api'])->prefix('admin')->group(function () {
-    // 管理员认证路由
-    Route::post('/login', function () {
-        return response()->json(['message' => '管理员登录API']);
-    });
+// 需要认证的管理端接口
+Route::middleware('auth:sanctum')->group(function () {
+    // 认证相关
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout-all', [AuthController::class, 'logoutAll']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/refresh', [AuthController::class, 'refresh']);
     
-    // 需要认证的管理员路由
-    Route::middleware(['auth:sanctum'])->group(function () {
-        // 用户管理
-        Route::apiResource('/users', \App\Http\Controllers\Admin\UserController::class);
-        
-        // 内容管理
-        Route::apiResource('/content', \App\Http\Controllers\Admin\ContentController::class);
-        
-        // 统计数据
-        Route::get('/stats', function () {
-            return response()->json(['message' => '系统统计数据']);
-        });
+    // 资源管理
+    Route::apiResource('/users', UserController::class);
+    Route::apiResource('/content', ContentController::class);
+    
+    // 统计信息
+    Route::get('/stats', function () {
+        return response()->json([
+            'success' => true,
+            'message' => '系统统计数据',
+            'stats' => [
+                'total_users' => 0,
+                'total_content' => 0,
+                'today_visits' => 0,
+            ]
+        ]);
     });
-}); 
+});
