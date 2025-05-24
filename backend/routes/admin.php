@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // 获取数据的路由
         Route::get('/stats', [ContentController::class, 'getStats']);
         Route::get('/courses', [ContentController::class, 'getCourses']);
+        Route::get('/courses/{id}', [ContentController::class, 'getCourseDetail']);
         Route::get('/materials', [ContentController::class, 'getMaterials']);
         Route::get('/vocabulary', [ContentController::class, 'getVocabulary']);
         Route::get('/exercises', [ContentController::class, 'getExercises']);

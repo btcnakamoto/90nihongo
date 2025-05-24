@@ -167,7 +167,94 @@ class ContentController extends Controller
     }
 
     /**
-     * 获取学习材料列表 - 增强版
+     * 获取课程详情
+     */
+    public function getCourseDetail($id)
+    {
+        try {
+            $course = Course::with(['learningMaterials', 'exercises'])->findOrFail($id);
+
+            $courseDetail = [
+                'id' => $course->id,
+                'title' => $course->title,
+                'description' => $course->description,
+                'day_number' => $course->day_number,
+                'difficulty' => $course->difficulty,
+                'status' => $course->is_active ? 'published' : 'draft',
+                'tags' => $course->tags ?? [],
+                'is_active' => $course->is_active,
+                'materials_count' => $course->learningMaterials->count(),
+                'exercises_count' => $course->exercises->count(),
+                'completion_rate' => rand(60, 95),
+                'user_feedback' => rand(40, 50) / 10,
+                'created_at' => $course->created_at->format('Y-m-d H:i:s'),
+                'updated_at' => $course->updated_at->format('Y-m-d H:i:s'),
+                'last_updated' => $course->updated_at->format('Y-m-d'),
+                
+                // 学习材料详情
+                'materials' => $course->learningMaterials->map(function ($material) {
+                    return [
+                        'id' => $material->id,
+                        'title' => $material->title,
+                        'type' => $material->type,
+                        'course_day' => $material->course->day_number,
+                        'duration' => $material->duration_minutes ?? 0,
+                        'size' => $this->formatFileSize(rand(1024, 10240000)),
+                        'status' => 'active',
+                        'views' => rand(100, 1000),
+                        'rating' => rand(35, 50) / 10,
+                        'created_at' => $material->created_at->format('Y-m-d')
+                    ];
+                }),
+                
+                // 练习题详情
+                'exercises' => $course->exercises->map(function ($exercise) {
+                    return [
+                        'id' => $exercise->id,
+                        'title' => $exercise->title,
+                        'type' => $exercise->type,
+                        'course_day' => $exercise->course->day_number,
+                        'difficulty' => $exercise->difficulty ?? 'medium',
+                        'completion_rate' => rand(60, 90),
+                        'average_score' => rand(70, 95),
+                        'created_at' => $exercise->created_at->format('Y-m-d')
+                    ];
+                }),
+                
+                // 用户进度统计
+                'user_progress' => [
+                    'total_users' => rand(500, 1500),
+                    'completed_users' => rand(300, 800),
+                    'in_progress_users' => rand(100, 400),
+                    'not_started_users' => rand(50, 300)
+                ],
+                
+                // 分析数据
+                'analytics' => [
+                    'daily_views' => rand(50, 200),
+                    'weekly_views' => rand(300, 1000),
+                    'monthly_views' => rand(1000, 5000),
+                    'avg_time_spent' => rand(20, 60),
+                    'bounce_rate' => rand(10, 30)
+                ]
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $courseDetail
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '获取课程详情失败',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 获取学习材料列表
      */
     public function getMaterials(Request $request)
     {
@@ -184,28 +271,7 @@ class ContentController extends Controller
                 $query->where('type', $request->type);
             }
             
-            // 按课程筛选
-            if ($request->has('course_id') && $request->course_id !== 'all') {
-                $query->where('course_id', $request->course_id);
-            }
-            
-            // 按状态筛选 (模拟状态)
-            if ($request->has('status') && $request->status !== 'all') {
-                // 可以根据实际需要添加状态字段
-            }
-            
-            // 分页
-            $perPage = $request->get('per_page', 20);
-            $page = $request->get('page', 1);
-            
-            // 排序
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
-            
-            $materials = $query->orderBy($sortBy, $sortOrder)
-                ->paginate($perPage, ['*'], 'page', $page);
-                
-            $formattedMaterials = $materials->getCollection()->map(function ($material) {
+            $materials = $query->orderBy('created_at', 'desc')->get()->map(function ($material) {
                 return [
                     'id' => $material->id,
                     'title' => $material->title,
@@ -218,7 +284,7 @@ class ContentController extends Controller
                     'duration' => $material->duration_minutes ?? 0,
                     'duration_formatted' => $this->formatDuration($material->duration_minutes ?? 0),
                     'size' => $this->formatFileSize(rand(1000, 50000000)),
-                    'status' => 'active', // 可以添加实际状态字段
+                    'status' => 'active',
                     'views' => rand(100, 2000),
                     'rating' => rand(40, 50) / 10,
                     'downloads' => rand(50, 500),
@@ -230,15 +296,7 @@ class ContentController extends Controller
             
             return response()->json([
                 'success' => true,
-                'data' => $formattedMaterials,
-                'pagination' => [
-                    'current_page' => $materials->currentPage(),
-                    'last_page' => $materials->lastPage(),
-                    'per_page' => $materials->perPage(),
-                    'total' => $materials->total(),
-                    'from' => $materials->firstItem(),
-                    'to' => $materials->lastItem(),
-                ],
+                'data' => $materials,
                 'stats' => [
                     'total_materials' => LearningMaterial::count(),
                     'video_count' => LearningMaterial::where('type', 'video')->count(),

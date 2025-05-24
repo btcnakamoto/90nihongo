@@ -47,6 +47,40 @@ export interface Course {
   last_updated: string;
 }
 
+// 课程详情接口
+export interface CourseDetail {
+  id: number;
+  title: string;
+  description: string;
+  day_number: number;
+  difficulty: string;
+  status: string;
+  tags: string[];
+  is_active: boolean;
+  materials_count: number;
+  exercises_count: number;
+  completion_rate: number;
+  user_feedback: number;
+  created_at: string;
+  updated_at: string;
+  last_updated: string;
+  materials: LearningMaterial[];
+  exercises: Exercise[];
+  user_progress: {
+    total_users: number;
+    completed_users: number;
+    in_progress_users: number;
+    not_started_users: number;
+  };
+  analytics: {
+    daily_views: number;
+    weekly_views: number;
+    monthly_views: number;
+    avg_time_spent: number;
+    bounce_rate: number;
+  };
+}
+
 export interface LearningMaterial {
   id: number;
   title: string;
@@ -152,6 +186,12 @@ export const contentService = {
     difficulty?: string;
   }): Promise<{ success: boolean; data: Course[] }> {
     const response = await api.get('/admin/content/courses', { params });
+    return response.data;
+  },
+
+  // 获取课程详情
+  async getCourseDetail(id: number): Promise<{ success: boolean; data: CourseDetail }> {
+    const response = await api.get(`/admin/content/courses/${id}`);
     return response.data;
   },
 

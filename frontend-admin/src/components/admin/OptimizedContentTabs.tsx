@@ -1,5 +1,4 @@
-import { memo, useMemo, useCallback } from 'react';
-import { TabsContent } from '@/components/ui/tabs';
+import { memo, useMemo, useCallback } from 'react';import { Link } from 'react-router-dom';import { TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -180,8 +179,12 @@ const CourseTableRow = memo(({
           <p className="text-sm text-gray-500">更新于 {course.last_updated}</p>
         </div>
       </TableCell>
-      <TableCell><DifficultyBadge difficulty={course.difficulty} /></TableCell>
-      <TableCell><StatusBadge status={course.status} /></TableCell>
+      <TableCell>
+        <DifficultyBadge difficulty={course.difficulty} />
+      </TableCell>
+      <TableCell>
+        <StatusBadge status={course.status} />
+      </TableCell>
       <TableCell>
         <Badge variant="outline">{course.materials_count} 个</Badge>
       </TableCell>
@@ -204,9 +207,11 @@ const CourseTableRow = memo(({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handleView}>
-            <Eye className="h-4 w-4" />
-          </Button>
+          <Link to={`/admin/content/courses/${course.id}`}>
+            <Button variant="ghost" size="sm">
+              <Eye className="h-4 w-4" />
+            </Button>
+          </Link>
           <Button variant="ghost" size="sm" onClick={handleEdit}>
             <Edit className="h-4 w-4" />
           </Button>
