@@ -6,11 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUserManagement from "./pages/AdminUserManagement";
-import AdminContentManagementOptimized from "./pages/AdminContentManagementOptimized";import AdminCourseDetail from "./pages/AdminCourseDetail";
-import AdminAnalytics from "./pages/AdminAnalytics";
-import AdminSettings from "./pages/AdminSettings";
-import AdminDatabaseBackup from "./pages/AdminDatabaseBackup";
-import AdminSubscriptionManagement from "./pages/AdminSubscriptionManagement";
+import AdminContentManagementOptimized from "./pages/AdminContentManagementOptimized";import AdminCourseDetail from "./pages/AdminCourseDetail";import AdminAnalytics from "./pages/AdminAnalytics";import AdminSettings from "./pages/AdminSettings";import AdminDatabaseBackup from "./pages/AdminDatabaseBackup";import AdminSubscriptionManagement from "./pages/AdminSubscriptionManagement";import AdminResourceManager from "./pages/AdminResourceManager";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { AdminAuthProvider, useAdminAuth } from "./contexts/AdminAuthContext";
@@ -41,9 +37,7 @@ const App = () => (
               <Route path="/admin/users" element={<ProtectedRoute><AdminUserManagement /></ProtectedRoute>} />
               <Route path="/admin/subscriptions" element={<ProtectedRoute><AdminSubscriptionManagement /></ProtectedRoute>} />
                                           <Route path="/admin/content" element={<ProtectedRoute><AdminContentManagementOptimized /></ProtectedRoute>} />              <Route path="/admin/content/courses" element={<ProtectedRoute><AdminContentManagementOptimized /></ProtectedRoute>} />              <Route path="/admin/content/courses/:id" element={<ProtectedRoute><AdminCourseDetail /></ProtectedRoute>} />              <Route path="/admin/content/materials" element={<ProtectedRoute><AdminContentManagementOptimized /></ProtectedRoute>} />              <Route path="/admin/content/vocabulary" element={<ProtectedRoute><AdminContentManagementOptimized /></ProtectedRoute>} />              <Route path="/admin/content/exercises" element={<ProtectedRoute><AdminContentManagementOptimized /></ProtectedRoute>} />
-              <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
-              <Route path="/admin/database" element={<ProtectedRoute><AdminDatabaseBackup /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+                            <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />              <Route path="/admin/resources" element={<ProtectedRoute><AdminResourceManager /></ProtectedRoute>} />              <Route path="/admin/database" element={<ProtectedRoute><AdminDatabaseBackup /></ProtectedRoute>} />              <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

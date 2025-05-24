@@ -1,0 +1,82 @@
+{
+  "timestamp": "2025-05-24T16:31:06.153735",
+  "summary": {
+    "total_articles": 5,
+    "total_vocabulary": 10,
+    "total_audio_files": 15,
+    "csv_files_created": 3
+  },
+  "csv_files": {
+    "courses": "demo_import_data\\courses.csv",
+    "materials": "demo_import_data\\materials.csv",
+    "vocabulary": "demo_import_data\\vocabulary.csv"
+  },
+  "audio_mapping_preview": [
+    {
+      "filename": "park_news.mp3",
+      "content_type": "course",
+      "content_id": 1,
+      "title": "新しい公園が完成しました",
+      "match_confidence": 1.0,
+      "match_reason": "精确文件名匹配"
+    },
+    {
+      "filename": "festival_news.mp3",
+      "content_type": "course",
+      "content_id": 2,
+      "title": "日本の伝統的な祭り",
+      "match_confidence": 1.0,
+      "match_reason": "精确文件名匹配"
+    },
+    {
+      "filename": "train_news.mp3",
+      "content_type": "course",
+      "content_id": 3,
+      "title": "新しい電車の路線",
+      "match_confidence": 1.0,
+      "match_reason": "精确文件名匹配"
+    },
+    {
+      "filename": "cooking_class.mp3",
+      "content_type": "course",
+      "content_id": 4,
+      "title": "季節の料理教室",
+      "match_confidence": 1.0,
+      "match_reason": "精确文件名匹配"
+    },
+    {
+      "filename": "programming_class.mp3",
+      "content_type": "course",
+      "content_id": 5,
+      "title": "学校で新しい授業が始まります",
+      "match_confidence": 1.0,
+      "match_reason": "精确文件名匹配"
+    }
+  ],
+  "import_steps": [
+    "1. 登录网站管理后台",
+    "2. 进入'内容管理'页面",
+    "3. 点击'批量导入'按钮",
+    "4. 上传courses.csv文件，选择'课程'类型",
+    "5. 上传materials.csv文件，选择'学习材料'类型",
+    "6. 上传vocabulary.csv文件，选择'词汇'类型",
+    "7. 进入'音频管理'上传对应的音频文件",
+    "8. 使用'智能关联'功能自动匹配音频与内容",
+    "9. 审核并确认所有关联关系",
+    "10. 测试学习效果并调整内容"
+  ],
+  "expected_results": {
+    "courses_created": 5,
+    "materials_created": 5,
+    "vocabulary_created": 10,
+    "audio_associations": 15,
+    "learning_days_covered": 5
+  },
+  "quality_metrics": {
+    "beginner_content": 2,
+    "intermediate_content": 3,
+    "n5_vocabulary": 4,
+    "n4_vocabulary": 3,
+    "n3_vocabulary": 3
+  }
+}

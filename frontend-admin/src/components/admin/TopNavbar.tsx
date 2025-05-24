@@ -21,20 +21,14 @@ import {
   BookOpen,
   BarChart,
   MessageSquare,
-  Database,
-  HelpCircle,
-  Activity,
-  FileText,
-  type LucideIcon
+    Database,  HelpCircle,  Activity,  FileText,  Download,  type LucideIcon
 } from "lucide-react";
 
 // 路由配置，用于生成面包屑
 const routeConfig: Record<string, { title: string; icon: LucideIcon }> = {
   "/admin": { title: "仪表盘", icon: Home },
   "/admin/users": { title: "用户管理", icon: Users },
-  "/admin/content": { title: "内容管理", icon: BookOpen },
-  "/admin/analytics": { title: "数据分析", icon: BarChart },
-  "/admin/community": { title: "社区管理", icon: MessageSquare },
+    "/admin/content": { title: "内容管理", icon: BookOpen },  "/admin/analytics": { title: "数据分析", icon: BarChart },  "/admin/community": { title: "社区管理", icon: MessageSquare },  "/admin/resources": { title: "资源管理", icon: Download },
   "/admin/reports": { title: "报告中心", icon: FileText },
   "/admin/monitoring": { title: "实时监控", icon: Activity },
   "/admin/database": { title: "数据库备份", icon: Database },

@@ -23,7 +23,8 @@ import {
   CreditCard,
   Calendar,
   Volume2,
-  Languages
+  Languages,
+  Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -310,23 +311,7 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
                   text: "练习题库",
                   href: "/admin/content/exercises"
                 }
-              ]}
-            />
-            <SidebarItem 
-              icon={MessageSquare} 
-              text="社区管理" 
-              href="/admin/community" 
-              isActive={activePath === "/admin/community"}
-              count={5}
-            />
-            <SidebarItem 
-              icon={CreditCard} 
-              text="订阅管理" 
-              href="/admin/subscriptions" 
-              isActive={activePath === "/admin/subscriptions"}
-              count={3}
-            />
-          </SidebarSection>
+                            ]}            />            <SidebarItem               icon={MessageSquare}               text="社区管理"               href="/admin/community"               isActive={activePath === "/admin/community"}              count={5}            />            <SidebarItem               icon={Download}               text="资源管理"               href="/admin/resources"               isActive={activePath === "/admin/resources"}            />            <SidebarItem               icon={CreditCard}               text="订阅管理"               href="/admin/subscriptions"               isActive={activePath === "/admin/subscriptions"}              count={3}            />          </SidebarSection>
 
           {/* 数据分析 */}
           <SidebarSection title="数据分析">
