@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 
 class ProcessWebScrapingJob implements ShouldQueue
 {
@@ -16,63 +17,78 @@ class ProcessWebScrapingJob implements ShouldQueue
 
     protected ImportTask $task;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(ImportTask $task)
     {
         $this->task = $task;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         try {
-            $this->task->markAsStarted();
+            $this->task->update(['status' => 'running']);
             
             $config = $this->task->config;
-            $urls = $config['urls'] ?? [];
-            $maxPages = $config['max_pages'] ?? 10;
-            $contentType = $config['content_type'] ?? 'course';
-            $delayMs = $config['delay_ms'] ?? 1000;
             
-            $this->task->addLog('开始处理 ' . count($urls) . ' 个URL');
-            
-            $processedItems = 0;
-            
-            foreach ($urls as $url) {
-                if ($processedItems >= $maxPages) {
-                    break;
-                }
-                
-                $this->task->addLog("正在处理: {$url}");
-                
-                // 模拟网页抓取过程
-                // 在实际实现中，这里会调用您的content_importer.py或其他抓取工具
-                sleep($delayMs / 1000); // 模拟延迟
-                
-                $processedItems++;
-                $this->task->updateProgress($processedItems);
-                
-                $this->task->addLog("已完成: {$url}");
+            // 创建临时配置文件供Python脚本使用
+            $tempDir = storage_path('app/temp');
+            if (!is_dir($tempDir)) {
+                mkdir($tempDir, 0755, true);
             }
             
-            $this->task->markAsCompleted();
-            $this->task->addLog("网页抓取任务完成，共处理 {$processedItems} 个页面");
+            $configFile = $tempDir . '/scraping_config_' . $this->task->id . '.json';
+            file_put_contents($configFile, json_encode([
+                'task_id' => $this->task->id,
+                'urls' => explode("\n", $config['urls']),
+                'max_pages' => $config['max_pages'] ?? 10,
+                'content_type' => $config['content_type'] ?? 'course',
+                'delay_ms' => $config['delay_ms'] ?? 1000,
+                'include_images' => $config['include_images'] ?? false,
+                'include_audio' => $config['include_audio'] ?? false,
+                'database_config' => [
+                    'host' => env('DB_HOST'),
+                    'database' => env('DB_DATABASE'),
+                    'username' => env('DB_USERNAME'),
+                    'password' => env('DB_PASSWORD'),
+                ]
+            ]));
+            
+            // 调用Python抓取脚本
+            $pythonScript = base_path('python/web_scraper.py');
+            $command = "python \"{$pythonScript}\" \"{$configFile}\"";
+            
+            Log::info("执行抓取命令: {$command}");
+            
+            $result = Process::run($command);
+            
+            if ($result->successful()) {
+                $this->task->update([
+                    'status' => 'completed',
+                    'progress' => 100,
+                    'logs' => array_merge($this->task->logs ?? [], ['Python脚本执行成功'])
+                ]);
+            } else {
+                throw new \Exception('Python脚本执行失败: ' . $result->errorOutput());
+            }
+            
+            // 清理临时文件
+            if (file_exists($configFile)) {
+                unlink($configFile);
+            }
             
         } catch (\Exception $e) {
             Log::error('网页抓取任务失败: ' . $e->getMessage());
-            $this->task->markAsFailed($e->getMessage());
+            $this->task->update([
+                'status' => 'failed',
+                'logs' => array_merge($this->task->logs ?? [], ['抓取失败: ' . $e->getMessage()])
+            ]);
         }
     }
 
-    /**
-     * Handle a job failure.
-     */
     public function failed(\Throwable $exception): void
     {
-        $this->task->markAsFailed($exception->getMessage());
+        $this->task->update([
+            'status' => 'failed',
+            'logs' => array_merge($this->task->logs ?? [], ['任务失败: ' . $exception->getMessage()])
+        ]);
     }
 } 

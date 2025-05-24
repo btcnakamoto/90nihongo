@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useSidebar } from '@/contexts/SidebarContext';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useState } from 'react';import { Link } from 'react-router-dom';import AdminSidebar from '@/components/admin/AdminSidebar';import { useSidebar } from '@/contexts/SidebarContext';import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -140,12 +137,7 @@ const AdminCourseManagement = () => {
     avgCompletion: courses.length > 0 ? Math.round(courses.reduce((sum, c) => sum + c.completion_rate, 0) / courses.length) : 0
   };
 
-  return (
-    <div className={cn(
-      "min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-300",
-      isCollapsed ? "ml-16" : "ml-72"
-    )}>
-      {/* 页面头部 */}
+    return (    <div className="min-h-screen bg-gray-50 flex">      <AdminSidebar activePath="/admin/content/courses" />      <div className={cn(        "flex-1 bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-300 main-content",        isCollapsed ? "collapsed" : ""      )}>        {/* 页面头部 */}
       <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
@@ -340,11 +332,6 @@ const AdminCourseManagement = () => {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
+                    </CardContent>        </Card>      </div>    </div>  </div>  );};
 
 export default AdminCourseManagement; 

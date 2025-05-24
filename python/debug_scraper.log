@@ -1,0 +1,5 @@
+2025-05-24 17:53:47,062 - INFO - 开始处理URL: https://www3.nhk.or.jp/news/easy/
+2025-05-24 17:53:47,063 - INFO - 访问NHK Easy News主页: https://www3.nhk.or.jp/news/easy/
+2025-05-24 17:53:47,317 - INFO - 找到 0 个文章链接
+2025-05-24 17:53:47,318 - INFO - 调试抓取完成！共抓取 0 篇文章
+2025-05-24 17:53:47,318 - INFO - 结果已保存到: debug_scraping_results.json

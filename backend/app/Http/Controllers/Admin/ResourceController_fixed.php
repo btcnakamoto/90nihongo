@@ -73,9 +73,7 @@ class ResourceController extends Controller
             $failedResources = ResourceItem::where('status', 'error')->count();
             $activeTasks = ImportTask::whereIn('status', ['running', 'pending'])->count();
             
-            // 计算总存储大小
-            $totalSizeBytes = ResourceItem::sum('file_size') ?? 0;
-            $totalSize = $this->formatBytes($totalSizeBytes);
+                        // 计算总存储大小            $totalSizeBytes = ResourceItem::sum('file_size') ?? 0;            $totalSize = $this->formatBytes($totalSizeBytes);
             
             // 计算成功率
             $successRate = $this->calculateSuccessRate();

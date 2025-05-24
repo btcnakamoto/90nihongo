@@ -1,0 +1,18 @@
+{
+  "url": "https://www3.nhk.or.jp/news/easy/",
+  "title": "NHKやさしいことばニュース | NEWS WEB EASY",
+  "content": "",
+  "images": [
+    "https://www3.nhk.or.jp/news/easy/images/logo_title.svg",
+    "https://www3.nhk.or.jp/news/easy/images/media_icon_RGB_R1_a.png",
+    "https://www3.nhk.or.jp/news/easy/images/logo_nnw.svg",
+    "https://www3.nhk.or.jp/news/easy/images/media_icon_RGB_R1_a.png",
+    "https://www3.nhk.or.jp/news/easy/images/icon_typhoon-v2.svg"
+  ],
+  "audio": [],
+  "metadata": {
+    "source": "NHK Easy News",
+    "difficulty": "easy",
+    "language": "japanese"
+  }
+}

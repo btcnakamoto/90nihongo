@@ -1,0 +1,8 @@
+2025-05-24 17:55:20,368 - INFO - 访问: https://www3.nhk.or.jp/news/easy/
+2025-05-24 17:55:20,646 - INFO - 找到 7 个文章链接
+2025-05-24 17:55:20,648 - INFO - 抓取文章: https://www3.nhk.or.jp/news/easy/article/disaster_tsunami.html
+2025-05-24 17:55:20,784 - INFO - 成功抓取: 津波　すぐ逃げて | NHKやさしいことばニュース | NE... (内容: 1411 字符)
+2025-05-24 17:55:21,785 - INFO - 抓取文章: https://www3.nhk.or.jp/news/easy/article/disaster_heat.html
+2025-05-24 17:55:21,923 - INFO - 成功抓取: 熱中症にならないために気をつけること | NHKやさしいこと... (内容: 1960 字符)
+2025-05-24 17:55:22,934 - INFO - 抓取文章: https://www3.nhk.or.jp/news/easy/article/disaster_snow.html
+2025-05-24 17:55:23,065 - INFO - 成功抓取: 雪がたくさん降ったときに気をつけること | NHKやさしいこ... (内容: 1894 字符)

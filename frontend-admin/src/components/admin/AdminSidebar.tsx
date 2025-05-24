@@ -1,31 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Users,
-  BookOpen,
-  FileText,
-  Settings,
-  BarChart,
-  MessageSquare,
-  Bell,
-  LogOut,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  User,
-  Database,
-  Home,
-  Shield,
-  Activity,
-  Layers,
-  HelpCircle,
-  CreditCard,
-  Calendar,
-  Volume2,
-  Languages,
-  Download
-} from "lucide-react";
+import {  LayoutDashboard,  Users,  BookOpen,  FileText,  Settings,  BarChart,  MessageSquare,  Bell,  LogOut,  ChevronDown,  ChevronUp,  ChevronRight,  User,  Database,  Home,  Shield,  Activity,  Layers,  HelpCircle,  CreditCard,  Calendar,  Volume2,  Languages,  Download,  Globe,  Upload,  Zap,  ClipboardList} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -311,7 +286,7 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
                   text: "练习题库",
                   href: "/admin/content/exercises"
                 }
-                            ]}            />            <SidebarItem               icon={MessageSquare}               text="社区管理"               href="/admin/community"               isActive={activePath === "/admin/community"}              count={5}            />            <SidebarItem               icon={Download}               text="资源管理"               href="/admin/resources"               isActive={activePath === "/admin/resources"}            />            <SidebarItem               icon={CreditCard}               text="订阅管理"               href="/admin/subscriptions"               isActive={activePath === "/admin/subscriptions"}              count={3}            />          </SidebarSection>
+                            ]}            />            <SidebarItem               icon={MessageSquare}               text="社区管理"               href="/admin/community"               isActive={activePath === "/admin/community"}              count={5}            />            <SidebarItem               icon={Download}               text="资源管理"               isActive={activePath.startsWith("/admin/resources")}              subItems={[                {                  icon: Globe,                  text: "网页抓取",                  href: "/admin/resources/scraping"                },                {                  icon: Upload,                  text: "文件上传",                  href: "/admin/resources/upload"                },                {                  icon: Zap,                  text: "API导入",                  href: "/admin/resources/api-import"                },                {                  icon: ClipboardList,                  text: "任务管理",                  href: "/admin/resources/tasks"                }              ]}            />            <SidebarItem               icon={CreditCard}               text="订阅管理"               href="/admin/subscriptions"               isActive={activePath === "/admin/subscriptions"}              count={3}            />          </SidebarSection>
 
           {/* 数据分析 */}
           <SidebarSection title="数据分析">

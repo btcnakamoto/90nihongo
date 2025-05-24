@@ -4,7 +4,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ContentController;
-use App\Http\Controllers\Admin\MaterialController;use App\Http\Controllers\Admin\DatabaseBackupController;use App\Http\Controllers\Admin\SubscriptionController;use App\Http\Controllers\Admin\ResourceController;
+use App\Http\Controllers\Admin\MaterialController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
+use App\Http\Controllers\Admin\SubscriptionController;
+use App\Http\Controllers\Admin\ResourceController;
 
 // 登录接口（无需认证）
 Route::post('/login', [AuthController::class, 'login']);
@@ -69,7 +72,29 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/batch-operation', [MaterialController::class, 'batchOperation']);
     });
     
-        // 资源管理    Route::prefix('resources')->group(function () {        Route::get('/', [ResourceController::class, 'index']);        Route::get('/stats', [ResourceController::class, 'getStats']);        Route::get('/tasks', [ResourceController::class, 'getTasks']);        Route::get('/tasks/{taskId}', [ResourceController::class, 'getTaskDetail']);        Route::post('/web-scraping', [ResourceController::class, 'startWebScraping']);        Route::post('/file-upload', [ResourceController::class, 'uploadFiles']);        Route::post('/api-import', [ResourceController::class, 'startApiImport']);        Route::patch('/tasks/{taskId}/toggle', [ResourceController::class, 'toggleTask']);        Route::delete('/tasks/{taskId}', [ResourceController::class, 'cancelTask']);        Route::delete('/{resourceId}', [ResourceController::class, 'deleteResource']);    });        // 数据库备份管理    Route::prefix('database')->group(function () {        Route::get('/status', [DatabaseBackupController::class, 'status']);        Route::get('/backups', [DatabaseBackupController::class, 'index']);        Route::post('/backups', [DatabaseBackupController::class, 'store']);        Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);        Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);        Route::post('/restore', [DatabaseBackupController::class, 'restore']);    });
+    // 资源管理
+    Route::prefix('resources')->group(function () {
+        Route::get('/', [ResourceController::class, 'index']);
+        Route::get('/stats', [ResourceController::class, 'getStats']);
+        Route::get('/tasks', [ResourceController::class, 'getTasks']);
+        Route::get('/tasks/{taskId}', [ResourceController::class, 'getTaskDetail']);
+        Route::post('/web-scraping', [ResourceController::class, 'startWebScraping']);
+        Route::post('/file-upload', [ResourceController::class, 'uploadFiles']);
+        Route::post('/api-import', [ResourceController::class, 'startApiImport']);
+        Route::patch('/tasks/{taskId}/toggle', [ResourceController::class, 'toggleTask']);
+        Route::delete('/tasks/{taskId}', [ResourceController::class, 'cancelTask']);
+        Route::delete('/{resourceId}', [ResourceController::class, 'deleteResource']);
+    });
+    
+    // 数据库备份管理
+    Route::prefix('database')->group(function () {
+        Route::get('/status', [DatabaseBackupController::class, 'status']);
+        Route::get('/backups', [DatabaseBackupController::class, 'index']);
+        Route::post('/backups', [DatabaseBackupController::class, 'store']);
+        Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);
+        Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);
+        Route::post('/restore', [DatabaseBackupController::class, 'restore']);
+    });
     
     // 统计信息
     Route::get('/stats', function () {
