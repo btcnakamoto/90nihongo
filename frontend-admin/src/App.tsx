@@ -10,6 +10,7 @@ import AdminContentManagement from "./pages/AdminContentManagement";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminSettings from "./pages/AdminSettings";
 import AdminDatabaseBackup from "./pages/AdminDatabaseBackup";
+import AdminSubscriptionManagement from "./pages/AdminSubscriptionManagement";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { AdminAuthProvider, useAdminAuth } from "./contexts/AdminAuthContext";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute><AdminUserManagement /></ProtectedRoute>} />
+              <Route path="/admin/subscriptions" element={<ProtectedRoute><AdminSubscriptionManagement /></ProtectedRoute>} />
               <Route path="/admin/content" element={<ProtectedRoute><AdminContentManagement /></ProtectedRoute>} />
               <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
               <Route path="/admin/database" element={<ProtectedRoute><AdminDatabaseBackup /></ProtectedRoute>} />

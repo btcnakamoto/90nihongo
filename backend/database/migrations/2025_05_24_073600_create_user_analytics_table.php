@@ -13,7 +13,17 @@ return new class extends Migration
     {
         Schema::create('user_analytics', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->string('event_type', 50);
+            $table->json('event_data')->nullable();
+            $table->string('session_id', 100)->nullable();
+            $table->ipAddress('ip_address')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->timestamp('created_at')->useCurrent();
+            
+            $table->index(['user_id', 'event_type', 'created_at']);
+            $table->index(['event_type', 'created_at']);
+            $table->index('session_id');
         });
     }
 

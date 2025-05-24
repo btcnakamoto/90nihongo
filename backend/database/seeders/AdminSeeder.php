@@ -14,32 +14,42 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        // 创建超级管理员
-        Admin::create([
-            'username' => 'admin',
-            'email' => 'admin@90nihongo.com',
-            'password' => Hash::make('admin123'),
-            'role' => Admin::ROLE_SUPER_ADMIN,
-            'status' => Admin::STATUS_ACTIVE,
-        ]);
+        Admin::updateOrCreate(
+            ['email' => 'admin@90nihongo.com'],
+            [
+                'username' => 'admin',
+                'email' => 'admin@90nihongo.com',
+                'password' => Hash::make('admin123'),
+                'role' => Admin::ROLE_SUPER_ADMIN,
+                'status' => Admin::STATUS_ACTIVE,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
 
         // 创建普通管理员
-        Admin::create([
-            'username' => 'manager',
-            'email' => 'manager@90nihongo.com',
-            'password' => Hash::make('manager123'),
-            'role' => Admin::ROLE_ADMIN,
-            'status' => Admin::STATUS_ACTIVE,
-        ]);
+        Admin::updateOrCreate(
+            ['email' => 'manager@90nihongo.com'],
+            [
+                'username' => 'manager',
+                'email' => 'manager@90nihongo.com',
+                'password' => Hash::make('manager123'),
+                'role' => Admin::ROLE_ADMIN,
+                'status' => Admin::STATUS_ACTIVE,
+            ]
+        );
 
         // 创建内容管理员
-        Admin::create([
-            'username' => 'moderator',
-            'email' => 'moderator@90nihongo.com',
-            'password' => Hash::make('moderator123'),
-            'role' => Admin::ROLE_MODERATOR,
-            'status' => Admin::STATUS_ACTIVE,
-        ]);
+        Admin::updateOrCreate(
+            ['email' => 'moderator@90nihongo.com'],
+            [
+                'username' => 'moderator',
+                'email' => 'moderator@90nihongo.com',
+                'password' => Hash::make('moderator123'),
+                'role' => Admin::ROLE_MODERATOR,
+                'status' => Admin::STATUS_ACTIVE,
+            ]
+        );
 
         $this->command->info('Admin accounts created:');
         $this->command->line('Super Admin: admin@90nihongo.com / admin123');

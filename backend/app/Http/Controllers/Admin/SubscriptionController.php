@@ -80,9 +80,11 @@ class SubscriptionController extends Controller
                     ->count(),
                 
                 // 推荐统计
-                'total_referrals' => 0, // ReferralProgram::count(),
-                'successful_referrals' => 0, // ReferralProgram::where('status', 'approved')->count(),
-                'pending_commission' => 0, // ReferralProgram::where('status', 'approved')->whereNull('paid_at')->sum('commission_amount'),
+                'total_referrals' => ReferralProgram::count(),
+                'successful_referrals' => ReferralProgram::where('status', 'approved')->count(),
+                'pending_commission' => ReferralProgram::where('status', 'approved')
+                    ->whereNull('paid_at')
+                    ->sum('commission_amount'),
             ];
 
             // 每日新增付费用户（最近30天）
@@ -260,15 +262,40 @@ class SubscriptionController extends Controller
     {
         try {
             $stats = [
-                'total_programs' => 0,
-                'pending_programs' => 0,
-                'approved_programs' => 0,
-                'paid_programs' => 0,
-                'total_commission' => 0,
-                'pending_commission' => 0,
-                'paid_commission' => 0,
-                'top_referrers' => [],
+                'total_programs' => ReferralProgram::count(),
+                'pending_programs' => ReferralProgram::where('status', 'pending')->count(),
+                'approved_programs' => ReferralProgram::where('status', 'approved')->count(),
+                'paid_programs' => ReferralProgram::where('status', 'paid')->count(),
+                'total_commission' => ReferralProgram::sum('commission_amount'),
+                'pending_commission' => ReferralProgram::where('status', 'approved')
+                    ->whereNull('paid_at')
+                    ->sum('commission_amount'),
+                'paid_commission' => ReferralProgram::where('status', 'paid')
+                    ->sum('commission_amount'),
             ];
+
+            // top推荐人
+            $topReferrers = User::withCount(['referralPrograms as successful_referrals' => function($query) {
+                    $query->where('status', 'approved');
+                }])
+                ->with(['referralPrograms' => function($query) {
+                    $query->where('status', 'approved');
+                }])
+                ->having('successful_referrals', '>', 0)
+                ->orderBy('successful_referrals', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(function($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'successful_referrals' => $user->successful_referrals,
+                        'total_commission' => $user->referralPrograms->sum('commission_amount'),
+                    ];
+                });
+
+            $stats['top_referrers'] = $topReferrers;
 
             return response()->json([
                 'success' => true,
@@ -282,4 +309,4 @@ class SubscriptionController extends Controller
             ], 500);
         }
     }
-}
+} 

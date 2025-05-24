@@ -90,16 +90,7 @@ body {
   width: 80px; /* 收起状态，稍微宽一点以容纳图标和徽章 */
 }
 
-/* 主内容区域的适配 */
-.main-content {
-  margin-left: 288px; /* 展开状态 */
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: margin-left;
-}
-
-.main-content.collapsed {
-  margin-left: 80px; /* 收起状态 */
-}
+/* 主内容区域的适配 */.main-content {  margin-left: 288px !important; /* 展开状态 */  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);  will-change: margin-left;}.main-content.collapsed {  margin-left: 80px !important; /* 收起状态 */}
 
 /* 侧边栏内容的过渡效果 */
 .sidebar-content {
@@ -304,24 +295,7 @@ body {
   transform: scale(1.05);
 }
 
-/* 响应式优化 */
-@media (max-width: 1024px) {
-  .admin-sidebar {
-    width: 0;
-    overflow: hidden;
-  }
-  
-  .admin-sidebar.mobile-open {
-    width: 288px;
-    position: fixed;
-    z-index: 50;
-    background: white;
-  }
-  
-  .main-content {
-    margin-left: 0;
-  }
-}
+/* 桌面端确保侧边栏布局正常工作 */@media (min-width: 1025px) {  .main-content {    margin-left: 288px !important; /* 展开状态 */  }    .main-content.collapsed {    margin-left: 80px !important; /* 收起状态 */  }}/* 响应式优化 */@media (max-width: 1024px) {  .admin-sidebar {    width: 0;    overflow: hidden;  }    .admin-sidebar.mobile-open {    width: 288px;    position: fixed;    z-index: 50;    background: white;  }    .main-content {    margin-left: 0;  }}
 
 /* 减少动画的媒体查询 */
 @media (prefers-reduced-motion: reduce) {
@@ -422,12 +396,4 @@ body {
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-}
+/* 修复侧边栏布局问题 - 确保主内容区域正确响应侧边栏状态 */.flex.min-h-screen .main-content {  margin-left: 288px !important;  transition: margin-left 0.3s ease !important;}.flex.min-h-screen .main-content.collapsed {  margin-left: 80px !important;}@layer base {  * {    @apply border-border;  }  body {    @apply bg-background text-foreground;  }}

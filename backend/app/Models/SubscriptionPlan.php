@@ -28,48 +28,63 @@ class SubscriptionPlan extends Model
         'features' => 'array',
         'is_popular' => 'boolean',
         'is_active' => 'boolean',
+        'duration_days' => 'integer',
+        'sort_order' => 'integer',
     ];
 
     /**
-     * 获取激活的计划，按排序顺序
+     * 获取活跃的订阅计划
      */
-    public static function getActivePlans()
+    public function scopeActive($query)
     {
-        return self::where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('price')
-            ->get();
+        return $query->where('is_active', true);
     }
 
     /**
-     * 计算折扣百分比
+     * 获取推荐的订阅计划
      */
-    public function getDiscountPercentageAttribute()
+    public function scopePopular($query)
     {
-        if (!$this->original_price || $this->original_price <= $this->price) {
-            return 0;
-        }
-        
-        return round((($this->original_price - $this->price) / $this->original_price) * 100);
+        return $query->where('is_popular', true);
     }
 
     /**
-     * 获取每日价格
+     * 按排序顺序获取
      */
-    public function getDailyPriceAttribute()
+    public function scopeOrdered($query)
     {
-        if (!$this->duration_days) {
-            return null; // 终身计划
-        }
-        
-        return round($this->price / $this->duration_days, 2);
+        return $query->orderBy('sort_order')->orderBy('price');
     }
 
     /**
      * 检查是否为终身计划
      */
-    public function isLifetime()
+    public function isLifetime(): bool
     {
-        return $this->duration_days === null;
+        return $this->duration_days === null || $this->code === 'lifetime';
+    }
+
+    /**
+     * 获取折扣百分比
+     */
+    public function getDiscountPercentageAttribute(): ?float
+    {
+        if (!$this->original_price || $this->original_price <= $this->price) {
+            return null;
+        }
+
+        return round((($this->original_price - $this->price) / $this->original_price) * 100, 1);
+    }
+
+    /**
+     * 获取每日价格
+     */
+    public function getDailyPriceAttribute(): ?float
+    {
+        if ($this->isLifetime()) {
+            return null;
+        }
+
+        return round($this->price / $this->duration_days, 2);
     }
 } 
