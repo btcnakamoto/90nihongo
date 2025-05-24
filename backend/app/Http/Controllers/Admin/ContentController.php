@@ -780,6 +780,390 @@ class ContentController extends Controller
     }
 
     /**
+     * 批量创建内容
+     */
+    public function batchCreate(Request $request, $contentType)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'data' => 'required|array|min:1|max:1000',
+                'data.*' => 'required|array'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '数据验证失败',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $data = $request->input('data');
+            $successCount = 0;
+            $errorCount = 0;
+            $errors = [];
+
+            DB::beginTransaction();
+
+            try {
+                foreach ($data as $index => $item) {
+                    try {
+                        switch ($contentType) {
+                            case 'course':
+                                $this->createCourseFromData($item);
+                                break;
+                            case 'material':
+                                $this->createMaterialFromData($item);
+                                break;
+                            case 'vocabulary':
+                                $this->createVocabularyFromData($item);
+                                break;
+                            case 'exercise':
+                                $this->createExerciseFromData($item);
+                                break;
+                            default:
+                                throw new \Exception('不支持的内容类型');
+                        }
+                        $successCount++;
+                    } catch (\Exception $e) {
+                        $errorCount++;
+                        $errors[] = "第" . ($index + 1) . "行: " . $e->getMessage();
+                    }
+                }
+
+                if ($errorCount > 0 && $successCount === 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => '批量导入失败，所有数据都有错误',
+                        'errors' => $errors
+                    ], 400);
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "批量导入完成。成功: {$successCount}, 失败: {$errorCount}",
+                    'data' => [
+                        'success_count' => $successCount,
+                        'error_count' => $errorCount,
+                        'errors' => $errors
+                    ]
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '批量导入失败',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 批量删除内容
+     */
+    public function batchDelete(Request $request, $contentType)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'ids' => 'required|array|min:1|max:100',
+                'ids.*' => 'required|integer|min:1'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '数据验证失败',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $ids = $request->input('ids');
+            $deletedCount = 0;
+
+            DB::beginTransaction();
+
+            try {
+                switch ($contentType) {
+                    case 'course':
+                        $deletedCount = Course::whereIn('id', $ids)->delete();
+                        break;
+                    case 'material':
+                        $deletedCount = LearningMaterial::whereIn('id', $ids)->delete();
+                        break;
+                    case 'vocabulary':
+                        $deletedCount = Vocabulary::whereIn('id', $ids)->delete();
+                        break;
+                    case 'exercise':
+                        $deletedCount = Exercise::whereIn('id', $ids)->delete();
+                        break;
+                    default:
+                        throw new \Exception('不支持的内容类型');
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "成功删除 {$deletedCount} 条记录",
+                    'deleted_count' => $deletedCount
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '批量删除失败',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 导出数据
+     */
+    public function exportData($contentType)
+    {
+        try {
+            $data = [];
+            $filename = '';
+
+            switch ($contentType) {
+                case 'course':
+                    $data = Course::all()->toArray();
+                    $filename = 'courses_export_' . date('Y-m-d') . '.csv';
+                    break;
+                case 'material':
+                    $data = LearningMaterial::with('course')->get()->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'title' => $item->title,
+                            'type' => $item->type,
+                            'course_day' => $item->course ? $item->course->day_number : null,
+                            'content' => $item->content,
+                            'media_url' => $item->media_url,
+                            'duration_minutes' => $item->duration_minutes,
+                            'created_at' => $item->created_at
+                        ];
+                    })->toArray();
+                    $filename = 'materials_export_' . date('Y-m-d') . '.csv';
+                    break;
+                case 'vocabulary':
+                    $data = Vocabulary::all()->toArray();
+                    $filename = 'vocabulary_export_' . date('Y-m-d') . '.csv';
+                    break;
+                case 'exercise':
+                    $data = Exercise::with('course')->get()->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'title' => $item->title,
+                            'type' => $item->type,
+                            'course_day' => $item->course ? $item->course->day_number : null,
+                            'question' => $item->question,
+                            'options' => is_array($item->options) ? implode(';', $item->options) : $item->options,
+                            'correct_answer' => $item->correct_answer,
+                            'explanation' => $item->explanation,
+                            'points' => $item->points,
+                            'created_at' => $item->created_at
+                        ];
+                    })->toArray();
+                    $filename = 'exercises_export_' . date('Y-m-d') . '.csv';
+                    break;
+                default:
+                    throw new \Exception('不支持的内容类型');
+            }
+
+            if (empty($data)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '没有数据可导出'
+                ], 404);
+            }
+
+            // 生成CSV内容
+            $output = fopen('php://temp', 'r+');
+            
+            // 写入表头
+            if (!empty($data)) {
+                fputcsv($output, array_keys($data[0]));
+                
+                // 写入数据
+                foreach ($data as $row) {
+                    fputcsv($output, $row);
+                }
+            }
+            
+            rewind($output);
+            $csvContent = stream_get_contents($output);
+            fclose($output);
+
+            return response($csvContent)
+                ->header('Content-Type', 'text/csv; charset=UTF-8')
+                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+                ->header('Content-Length', strlen($csvContent));
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '导出失败',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 从数据创建课程
+     */
+    private function createCourseFromData($data)
+    {
+        $validator = Validator::make($data, [
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'day_number' => 'required|integer|min:1|max:90|unique:courses,day_number',
+            'difficulty' => 'required|in:beginner,intermediate,advanced',
+            'tags' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Exception('课程数据验证失败: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return Course::create([
+            'title' => $data['title'],
+            'description' => $data['description'],
+            'day_number' => $data['day_number'],
+            'difficulty' => $data['difficulty'],
+            'tags' => isset($data['tags']) ? explode(',', $data['tags']) : [],
+            'is_active' => isset($data['is_active']) ? (bool)$data['is_active'] : false
+        ]);
+    }
+
+    /**
+     * 从数据创建学习材料
+     */
+    private function createMaterialFromData($data)
+    {
+        $validator = Validator::make($data, [
+            'title' => 'required|string|max:255',
+            'type' => 'required|in:video,audio,text,quiz',
+            'course_day' => 'required|integer|min:1|max:90',
+            'content' => 'required|string',
+            'media_url' => 'nullable|url',
+            'duration_minutes' => 'nullable|integer|min:0'
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Exception('学习材料数据验证失败: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        // 查找对应的课程
+        $course = Course::where('day_number', $data['course_day'])->first();
+        if (!$course) {
+            throw new \Exception('第' . $data['course_day'] . '天的课程不存在');
+        }
+
+        return LearningMaterial::create([
+            'course_id' => $course->id,
+            'title' => $data['title'],
+            'type' => $data['type'],
+            'content' => $data['content'],
+            'media_url' => $data['media_url'] ?? null,
+            'duration_minutes' => $data['duration_minutes'] ?? 0,
+            'metadata' => []
+        ]);
+    }
+
+    /**
+     * 从数据创建词汇
+     */
+    private function createVocabularyFromData($data)
+    {
+        $validator = Validator::make($data, [
+            'word' => 'required|string|max:255',
+            'reading' => 'required|string|max:255',
+            'meaning' => 'required|string',
+            'part_of_speech' => 'required|string|max:255',
+            'jlpt_level' => 'required|in:N5,N4,N3,N2,N1',
+            'example_sentence' => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Exception('词汇数据验证失败: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        return Vocabulary::create([
+            'word' => $data['word'],
+            'reading' => $data['reading'],
+            'meaning' => $data['meaning'],
+            'part_of_speech' => $data['part_of_speech'],
+            'example_sentence' => $data['example_sentence'] ?? null,
+            'example_reading' => $data['example_reading'] ?? null,
+            'example_meaning' => $data['example_meaning'] ?? null,
+            'jlpt_level' => $data['jlpt_level'],
+            'tags' => isset($data['tags']) ? explode(',', $data['tags']) : []
+        ]);
+    }
+
+    /**
+     * 从数据创建练习题
+     */
+    private function createExerciseFromData($data)
+    {
+        $validator = Validator::make($data, [
+            'title' => 'required|string|max:255',
+            'type' => 'required|in:listening,speaking,grammar,vocabulary',
+            'course_day' => 'required|integer|min:1|max:90',
+            'question' => 'required|string',
+            'correct_answer' => 'required|string',
+            'options' => 'nullable|string',
+            'explanation' => 'nullable|string',
+            'points' => 'nullable|integer|min:1'
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Exception('练习题数据验证失败: ' . implode(', ', $validator->errors()->all()));
+        }
+
+        // 查找对应的课程
+        $course = Course::where('day_number', $data['course_day'])->first();
+        if (!$course) {
+            throw new \Exception('第' . $data['course_day'] . '天的课程不存在');
+        }
+
+        // 处理选项
+        $options = null;
+        if (isset($data['options']) && !empty($data['options'])) {
+            if (is_string($data['options'])) {
+                $options = explode(',', $data['options']);
+            } else {
+                $options = $data['options'];
+            }
+        }
+
+        return Exercise::create([
+            'course_id' => $course->id,
+            'title' => $data['title'],
+            'type' => $data['type'],
+            'question' => $data['question'],
+            'options' => $options,
+            'correct_answer' => $data['correct_answer'],
+            'explanation' => $data['explanation'] ?? null,
+            'points' => $data['points'] ?? 10
+        ]);
+    }
+
+    /**
      * 从URL获取文件类型
      */
     private function getFileTypeFromUrl($url)

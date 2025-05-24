@@ -52,6 +52,13 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // 文件上传
         Route::post('/upload', [ContentController::class, 'uploadFile']);
+        
+        // 批量操作
+        Route::post('/batch/{contentType}', [ContentController::class, 'batchCreate']);
+        Route::delete('/batch/{contentType}', [ContentController::class, 'batchDelete']);
+        
+        // 数据导出
+        Route::get('/export/{contentType}', [ContentController::class, 'exportData']);
     });
     
     Route::apiResource('/content', ContentController::class);

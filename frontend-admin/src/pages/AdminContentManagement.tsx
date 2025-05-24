@@ -751,7 +751,7 @@ const AdminContentManagement = () => {
                     <Button onClick={() => handleCreateContent('course')} className="bg-blue-600 hover:bg-blue-700">
                       <Plus className="h-4 w-4 mr-2" />
                       添加课程
-                    </Button>
+                        </Button>
                   </div>
 
                   <Table>

@@ -36,7 +36,8 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import TopNavbar from '@/components/admin/TopNavbar';
 import PageHeader from '@/components/admin/PageHeader';
 import StatsCard from '@/components/admin/StatsCard';
-import { OptimizedCoursesTab, OptimizedMaterialsTab } from '@/components/admin/OptimizedContentTabs';import { OptimizedVocabularyTab, OptimizedExercisesTab } from '@/components/admin/VocabularyAndExerciseTabs';
+import { OptimizedCoursesTab, OptimizedMaterialsTab } from '@/components/admin/OptimizedContentTabs';
+import { OptimizedVocabularyTab, OptimizedExercisesTab } from '@/components/admin/VocabularyAndExerciseTabs';
 import { 
   ContentTypeSelector, 
   CourseForm, 
@@ -44,6 +45,7 @@ import {
   VocabularyForm, 
   ExerciseForm 
 } from '@/components/admin/ContentFormComponents';
+import BatchImportDialog from '@/components/admin/BatchImportDialog';
 
 // 移除了占位符组件，现在使用完整功能的优化组件
 
@@ -107,6 +109,7 @@ const AdminContentManagementOptimized = () => {
 
   // 对话框状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [batchImportDialogOpen, setBatchImportDialogOpen] = useState(false);
   const [contentType, setContentType] = useState<'course' | 'material' | 'vocabulary' | 'exercise'>('course');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -461,6 +464,39 @@ const AdminContentManagementOptimized = () => {
     console.log('View:', id);
   }, []);
 
+  // 批量导入处理函数
+  const handleBatchImport = useCallback(() => {
+    // 根据当前标签页确定导入类型
+    let importType: 'course' | 'material' | 'vocabulary' | 'exercise';
+    switch (activeTab) {
+      case 'courses':
+        importType = 'course';
+        break;
+      case 'materials':
+        importType = 'material';
+        break;
+      case 'vocabulary':
+        importType = 'vocabulary';
+        break;
+      case 'exercises':
+        importType = 'exercise';
+        break;
+      default:
+        importType = 'course';
+    }
+    setContentType(importType);
+    setBatchImportDialogOpen(true);
+  }, [activeTab]);
+
+  const handleBatchImportComplete = useCallback(async () => {
+    setBatchImportDialogOpen(false);
+    await reloadCurrentTabData();
+    toast({
+      title: "导入完成",
+      description: "数据已成功导入，页面数据已刷新",
+    });
+  }, [reloadCurrentTabData, toast]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
@@ -498,10 +534,7 @@ const AdminContentManagementOptimized = () => {
               <Plus className="h-4 w-4 mr-2" />
               创建内容
             </Button>
-            <Button variant="outline">
-              <Upload className="h-4 w-4 mr-2" />
-              批量导入
-            </Button>
+                                    <Button variant="outline" onClick={handleBatchImport}>              <Upload className="h-4 w-4 mr-2" />              批量导入            </Button>
           </PageHeader>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
@@ -602,7 +635,57 @@ const AdminContentManagementOptimized = () => {
               )}
             </TabsContent>
 
-                        {/* 词汇管理 - 使用优化组件 */}            {tabLoading.vocabulary ? (              <TabsContent value="vocabulary" className="space-y-6">                <div className="flex items-center justify-center h-32">                  <RefreshCw className="h-6 w-6 animate-spin" />                  <span className="ml-2">加载词汇数据...</span>                </div>              </TabsContent>            ) : (              <OptimizedVocabularyTab                vocabulary={vocabulary}                searchTerm={debouncedSearchTerm}                setSearchTerm={setSearchTerm}                filterLevel={filterLevel}                setFilterLevel={setFilterLevel}                currentPage={currentPage}                setCurrentPage={setCurrentPage}                pageSize={pageSize}                handleCreateContent={handleCreateContent}                handleEdit={handleEdit}                handleDelete={handleDelete}                handleView={handleView}              />            )}            {/* 练习题库 - 使用优化组件 */}            {tabLoading.exercises ? (              <TabsContent value="exercises" className="space-y-6">                <div className="flex items-center justify-center h-32">                  <RefreshCw className="h-6 w-6 animate-spin" />                  <span className="ml-2">加载练习题数据...</span>                </div>              </TabsContent>            ) : (              <OptimizedExercisesTab                exercises={exercises}                searchTerm={debouncedSearchTerm}                setSearchTerm={setSearchTerm}                filterType={filterType}                setFilterType={setFilterType}                filterLevel={filterLevel}                setFilterLevel={setFilterLevel}                currentPage={currentPage}                setCurrentPage={setCurrentPage}                pageSize={pageSize}                handleCreateContent={handleCreateContent}                handleEdit={handleEdit}                handleDelete={handleDelete}                handleView={handleView}              />            )}
+            {/* 词汇管理 - 使用优化组件 */}
+            {tabLoading.vocabulary ? (
+              <TabsContent value="vocabulary" className="space-y-6">
+                <div className="flex items-center justify-center h-32">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">加载词汇数据...</span>
+                </div>
+              </TabsContent>
+            ) : (
+              <OptimizedVocabularyTab
+                vocabulary={vocabulary}
+                searchTerm={debouncedSearchTerm}
+                setSearchTerm={setSearchTerm}
+                filterLevel={filterLevel}
+                setFilterLevel={setFilterLevel}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                pageSize={pageSize}
+                handleCreateContent={handleCreateContent}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+                handleView={handleView}
+              />
+            )}
+
+            {/* 练习题库 - 使用优化组件 */}
+            {tabLoading.exercises ? (
+              <TabsContent value="exercises" className="space-y-6">
+                <div className="flex items-center justify-center h-32">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">加载练习题数据...</span>
+                </div>
+              </TabsContent>
+            ) : (
+              <OptimizedExercisesTab
+                exercises={exercises}
+                searchTerm={debouncedSearchTerm}
+                setSearchTerm={setSearchTerm}
+                filterType={filterType}
+                setFilterType={setFilterType}
+                filterLevel={filterLevel}
+                setFilterLevel={setFilterLevel}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                pageSize={pageSize}
+                handleCreateContent={handleCreateContent}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+                handleView={handleView}
+              />
+            )}
           </Tabs>
 
           {/* 创建内容对话框 */}
@@ -671,13 +754,6 @@ const AdminContentManagementOptimized = () => {
                     </>
                   )}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </main>
-      </div>
-    </div>
-  );
-};
+                            </DialogFooter>            </DialogContent>          </Dialog>          {/* 批量导入对话框 */}          <BatchImportDialog            open={batchImportDialogOpen}            onOpenChange={setBatchImportDialogOpen}            contentType={contentType}            onImportComplete={handleBatchImportComplete}          />        </main>      </div>    </div>  );};
 
 export default AdminContentManagementOptimized; 

@@ -250,4 +250,24 @@ export const contentService = {
     });
     return response.data;
   },
-}; 
+
+  // 批量创建内容
+  async batchCreate(contentType: 'course' | 'material' | 'vocabulary' | 'exercise', data: any[]): Promise<{ success: boolean; message?: string; data?: any }> {
+    const response = await api.post(`/admin/content/batch/${contentType}`, { data });
+    return response.data;
+  },
+
+  // 批量删除内容
+  async batchDelete(contentType: 'course' | 'material' | 'vocabulary' | 'exercise', ids: number[]): Promise<{ success: boolean; message?: string; deleted_count?: number }> {
+    const response = await api.delete(`/admin/content/batch/${contentType}`, { data: { ids } });
+    return response.data;
+  },
+
+  // 导出数据
+  async exportData(contentType: 'course' | 'material' | 'vocabulary' | 'exercise'): Promise<Blob> {
+    const response = await api.get(`/admin/content/export/${contentType}`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+};
