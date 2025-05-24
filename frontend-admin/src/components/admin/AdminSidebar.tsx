@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   User,
   Database,
   Home,
@@ -19,50 +20,89 @@ import {
   Activity,
   Layers,
   HelpCircle,
-  CreditCard
+  CreditCard,
+  Calendar,
+  Volume2,
+  Languages
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 
-interface SidebarItemProps {
+interface SubMenuItem {
   icon: React.ElementType;
   text: string;
   href: string;
-  isActive?: boolean;
-  count?: number;
 }
 
-const SidebarItem = ({ icon: Icon, text, href, isActive, count }: SidebarItemProps) => {
-  const { isCollapsed } = useSidebar();
+interface SidebarItemProps {
+  icon: React.ElementType;
+  text: string;
+  href?: string;
+  isActive?: boolean;
+  count?: number;
+  subItems?: SubMenuItem[];
+}
 
+const SidebarSubItem = ({ icon: Icon, text, href, isActive }: { icon: React.ElementType; text: string; href: string; isActive: boolean }) => {
   return (
     <Link
       to={href}
       className={cn(
-        "sidebar-item group flex items-center gap-3 rounded-xl px-4 py-3 text-sm relative transition-all duration-200",
-        "tooltip-trigger",
+        "flex items-center gap-3 rounded-lg px-4 py-2 text-sm ml-4 transition-all duration-200",
         isActive 
-          ? "active bg-gradient-to-r from-nihongo-indigo to-nihongo-blue text-white shadow-lg" 
-          : "text-gray-600 hover:text-nihongo-darkBlue hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100"
+          ? "bg-nihongo-indigo text-white shadow-sm" 
+          : "text-gray-600 hover:text-nihongo-darkBlue hover:bg-gray-100"
       )}
-      data-tooltip={text}
     >
+      <Icon className={cn(
+        "h-4 w-4 flex-shrink-0 transition-all duration-200",
+        isActive ? "text-white" : "text-gray-500"
+      )} />
+      <span className={cn(
+        "font-medium transition-all duration-200",
+        isActive ? "text-white" : ""
+      )}>
+        {text}
+      </span>
+    </Link>
+  );
+};
+
+const SidebarItem = ({ icon: Icon, text, href, isActive, count, subItems }: SidebarItemProps) => {
+  const { isCollapsed } = useSidebar();
+  const location = useLocation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hasSubItems = subItems && subItems.length > 0;
+  
+  // 检查子菜单项是否有激活状态
+  const hasActiveSubItem = subItems?.some(item => location.pathname === item.href) || false;
+  const isMainActive = isActive || hasActiveSubItem;
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (hasSubItems) {
+      e.preventDefault();
+      setIsExpanded(!isExpanded);
+    }
+  };
+
+  const content = (
+    <>
       {/* 激活状态的左侧指示条 */}
-      {isActive && !isCollapsed && (
+      {isMainActive && !isCollapsed && (
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full"></div>
       )}
       
       <Icon className={cn(
         "sidebar-icon h-5 w-5 flex-shrink-0 transition-all duration-200",
-        isActive ? "text-white" : "text-gray-500 group-hover:text-nihongo-indigo"
+        isMainActive ? "text-white" : "text-gray-500 group-hover:text-nihongo-indigo"
       )} />
       
       {!isCollapsed && (
         <>
           <span className={cn(
             "font-medium transition-all duration-200",
-            isActive ? "text-white" : "group-hover:text-nihongo-darkBlue"
+            isMainActive ? "text-white" : "group-hover:text-nihongo-darkBlue"
           )}>
             {text}
           </span>
@@ -71,7 +111,7 @@ const SidebarItem = ({ icon: Icon, text, href, isActive, count }: SidebarItemPro
           {count && count > 0 && (
             <span className={cn(
               "ml-auto px-2 py-1 text-xs font-bold rounded-full transition-all duration-200",
-              isActive 
+              isMainActive 
                 ? "bg-white/20 text-white" 
                 : "bg-nihongo-red text-white"
             )}>
@@ -79,17 +119,73 @@ const SidebarItem = ({ icon: Icon, text, href, isActive, count }: SidebarItemPro
             </span>
           )}
           
-          {/* 悬停时的右侧箭头 - 展开状态 */}
-          {!isActive && (
+          {/* 展开/收起箭头 */}
+          {hasSubItems && (
+            <ChevronRight className={cn(
+              "ml-auto h-4 w-4 transition-all duration-200",
+              isExpanded && "rotate-90",
+              isMainActive ? "text-white" : "text-gray-500"
+            )} />
+          )}
+          
+          {/* 悬停时的右侧箭头 - 无子菜单时 */}
+          {!hasSubItems && !isMainActive && (
             <div className="ml-auto opacity-0 group-hover:opacity-100 transition-all duration-200">
               <div className="w-1.5 h-1.5 rounded-full bg-nihongo-indigo"></div>
             </div>
           )}
         </>
       )}
+    </>
+  );
 
-      {/* 收起状态下不显示任何徽章 */}
-    </Link>
+  return (
+    <div>
+      {hasSubItems ? (
+        <button
+          onClick={handleClick}
+          className={cn(
+            "sidebar-item group flex items-center gap-3 rounded-xl px-4 py-3 text-sm relative transition-all duration-200 w-full text-left",
+            "tooltip-trigger",
+            isMainActive 
+              ? "active bg-gradient-to-r from-nihongo-indigo to-nihongo-blue text-white shadow-lg" 
+              : "text-gray-600 hover:text-nihongo-darkBlue hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100"
+          )}
+          data-tooltip={text}
+        >
+          {content}
+        </button>
+      ) : (
+        <Link
+          to={href || '#'}
+          className={cn(
+            "sidebar-item group flex items-center gap-3 rounded-xl px-4 py-3 text-sm relative transition-all duration-200",
+            "tooltip-trigger",
+            isMainActive 
+              ? "active bg-gradient-to-r from-nihongo-indigo to-nihongo-blue text-white shadow-lg" 
+              : "text-gray-600 hover:text-nihongo-darkBlue hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100"
+          )}
+          data-tooltip={text}
+        >
+          {content}
+        </Link>
+      )}
+      
+      {/* 子菜单 */}
+      {hasSubItems && isExpanded && !isCollapsed && (
+        <div className="mt-1 space-y-1">
+          {subItems.map((subItem, index) => (
+            <SidebarSubItem
+              key={index}
+              icon={subItem.icon}
+              text={subItem.text}
+              href={subItem.href}
+              isActive={location.pathname === subItem.href}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -99,11 +195,15 @@ interface SidebarSectionProps {
 }
 
 const SidebarSection = ({ title, children }: SidebarSectionProps) => {
+  const { isCollapsed } = useSidebar();
+  
   return (
     <div className="space-y-2">
-      <h3 className="section-title px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-        {title}
-      </h3>
+      {!isCollapsed && (
+        <h3 className="section-title px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          {title}
+        </h3>
+      )}
       <div className="space-y-1">
         {children}
       </div>
@@ -188,8 +288,29 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
             <SidebarItem 
               icon={BookOpen} 
               text="内容管理" 
-              href="/admin/content" 
-              isActive={activePath === "/admin/content"} 
+              isActive={activePath.startsWith("/admin/content")}
+              subItems={[
+                {
+                  icon: Calendar,
+                  text: "90天课程",
+                  href: "/admin/content/courses"
+                },
+                {
+                  icon: FileText,
+                  text: "学习材料",
+                  href: "/admin/content/materials"
+                },
+                {
+                  icon: Languages,
+                  text: "词汇管理",
+                  href: "/admin/content/vocabulary"
+                },
+                {
+                  icon: HelpCircle,
+                  text: "练习题库",
+                  href: "/admin/content/exercises"
+                }
+              ]}
             />
             <SidebarItem 
               icon={MessageSquare} 
@@ -351,17 +472,19 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
                           全部设备登出
                         </button>
                         
-                        <button
-                          onClick={() => {
-                            setShowUserMenu(false);
-                            handleLogout();
-                          }}
-                          disabled={isLoading}
-                          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-50 group"
-                        >
-                          <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                          {isLoading ? '登出中...' : '登出'}
-                        </button>
+                        <div className="border-t border-gray-200/50 mt-2 pt-2">
+                          <button
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              handleLogout();
+                            }}
+                            disabled={isLoading}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-50 group"
+                          >
+                            <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                            {isLoading ? '登出中...' : '登出'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

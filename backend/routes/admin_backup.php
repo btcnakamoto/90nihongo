@@ -3,10 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\ContentController;
-use App\Http\Controllers\Admin\MaterialController;
-use App\Http\Controllers\Admin\DatabaseBackupController;
-use App\Http\Controllers\Admin\SubscriptionController;
+use App\Http\Controllers\Admin\ContentController;use App\Http\Controllers\Admin\MaterialController;use App\Http\Controllers\Admin\DatabaseBackupController;use App\Http\Controllers\Admin\SubscriptionController;
 
 // 登录接口（无需认证）
 Route::post('/login', [AuthController::class, 'login']);
@@ -52,18 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // 文件上传
         Route::post('/upload', [ContentController::class, 'uploadFile']);
     });
-    
-    Route::apiResource('/content', ContentController::class);
-    
-    // 学习材料专门管理路由
-    Route::prefix('materials')->group(function () {
-        Route::get('/', [MaterialController::class, 'getMaterialsWithFilters']);
-        Route::get('/stats', [MaterialController::class, 'getMaterialStats']);
-        Route::get('/{id}', [MaterialController::class, 'getMaterialDetail']);
-        Route::post('/batch-operation', [MaterialController::class, 'batchOperation']);
-    });
-    
-    // 数据库备份管理
+    Route::apiResource('/content', ContentController::class);        // 学习材料专门管理路由    Route::prefix('materials')->group(function () {        Route::get('/', [MaterialController::class, 'getMaterialsWithFilters']);        Route::get('/stats', [MaterialController::class, 'getMaterialStats']);        Route::get('/{id}', [MaterialController::class, 'getMaterialDetail']);        Route::post('/batch-operation', [MaterialController::class, 'batchOperation']);    });        // 数据库备份管理
     Route::prefix('database')->group(function () {
         Route::get('/status', [DatabaseBackupController::class, 'status']);
         Route::get('/backups', [DatabaseBackupController::class, 'index']);
@@ -85,4 +71,4 @@ Route::middleware('auth:sanctum')->group(function () {
             ]
         ]);
     });
-}); 
+});

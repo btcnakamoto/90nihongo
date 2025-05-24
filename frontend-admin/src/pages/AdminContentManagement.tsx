@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, lazy, Suspense } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { cn } from '@/lib/utils';
 import { 
@@ -22,12 +23,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import {
   BookOpen,
   Calendar,
@@ -74,9 +73,9 @@ import {
   Cell
 } from 'recharts';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+// 性能优化：使用React.memo包装大的表格组件const OptimizedTable = memo(Table);const OptimizedTableBody = memo(TableBody);
 
-// 优化的徽章组件 - 使用memo减少重渲染
+// 优化的徽章组件
 const DifficultyBadge = memo(({ difficulty }: { difficulty: string }) => {
   const badgeConfig = useMemo(() => {
     const configs = {
@@ -154,7 +153,7 @@ const TypeBadge = memo(({ type }: { type: string }) => {
   );
 });
 
-// 优化的课程表行组件
+// 课程表行组件
 const CourseTableRow = memo(({ 
   course, 
   onEdit, 
@@ -224,8 +223,25 @@ const CourseTableRow = memo(({
 const AdminContentManagement = () => {
   const { isCollapsed } = useSidebar();
   const { toast } = useToast();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  
+  // 根据路径确定初始活动标签页
+  const getInitialTab = useCallback(() => {
+    const path = location.pathname;
+    if (path.includes('/courses')) return 'courses';
+    if (path.includes('/materials')) return 'materials';
+    if (path.includes('/vocabulary')) return 'vocabulary';
+    if (path.includes('/exercises')) return 'exercises';
+    return 'overview';
+  }, [location.pathname]);
+
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+
+  // 监听路径变化，自动切换标签页
+  useEffect(() => {
+    setActiveTab(getInitialTab());
+  }, [getInitialTab]);
 
   // API数据状态
   const [stats, setStats] = useState<ContentStats | null>(null);
@@ -237,17 +253,14 @@ const AdminContentManagement = () => {
   const [vocabulary, setVocabulary] = useState<Vocabulary[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
 
-  // 搜索和筛选状态
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterLevel, setFilterLevel] = useState("all");
+  // 搜索和筛选状态  const [searchTerm, setSearchTerm] = useState("");  const [filterType, setFilterType] = useState("all");  const [filterStatus, setFilterStatus] = useState("all");  const [filterLevel, setFilterLevel] = useState("all");  // 分页状态  const [currentPage, setCurrentPage] = useState(1);  const [pageSize, setPageSize] = useState(20);  // 性能优化：防抖搜索  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");    useEffect(() => {    const timer = setTimeout(() => {      setDebouncedSearchTerm(searchTerm);    }, 300);    return () => clearTimeout(timer);  }, [searchTerm]);
 
   // 对话框状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [contentType, setContentType] = useState<'course' | 'material' | 'vocabulary' | 'exercise'>('course');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // 表单状态
   const [courseForm, setCourseForm] = useState<CreateCourseData>({
@@ -292,10 +305,7 @@ const AdminContentManagement = () => {
     points: 10
   });
 
-  // 文件上传状态
-  const [uploading, setUploading] = useState(false);
-
-  // 使用useCallback优化事件处理函数
+  // 加载数据
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -346,52 +356,26 @@ const AdminContentManagement = () => {
     loadData();
   }, [loadData]);
 
+  // 工具函数
+  const getContentTypeName = useCallback((type: string) => {
+    const names = {
+      course: '课程',
+      material: '学习材料',
+      vocabulary: '词汇',
+      exercise: '练习题'
+    };
+    return names[type as keyof typeof names] || type;
+  }, []);
+
+  const formatDuration = useCallback((seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }, []);
+
+  // 事件处理函数
   const handleCreateContent = useCallback((type: 'course' | 'material' | 'vocabulary' | 'exercise' = 'course') => {
     setContentType(type);
-    
-    // 重置表单状态
-    setCourseForm({
-      title: "",
-      description: "",
-      day_number: 1,
-      difficulty: "beginner",
-      tags: [],
-      is_active: false
-    });
-    
-    setMaterialForm({
-      course_id: 0,
-      title: "",
-      type: "text",
-      content: "",
-      media_url: "",
-      duration_minutes: 0,
-      metadata: {}
-    });
-    
-    setVocabularyForm({
-      word: "",
-      reading: "",
-      meaning: "",
-      part_of_speech: "",
-      example_sentence: "",
-      example_reading: "",
-      example_meaning: "",
-      jlpt_level: "N5",
-      tags: []
-    });
-    
-    setExerciseForm({
-      course_id: 0,
-      title: "",
-      type: "vocabulary",
-      question: "",
-      options: ["", "", "", ""],
-      correct_answer: "",
-      explanation: "",
-      points: 10
-    });
-    
     setCreateDialogOpen(true);
   }, []);
 
@@ -437,9 +421,6 @@ const AdminContentManagement = () => {
             throw new Error('请填写必要的课程信息');
           }
           result = await contentService.createCourse(courseForm);
-          if (result.success) {
-            await loadData();
-          }
           break;
 
         case 'material':
@@ -447,9 +428,6 @@ const AdminContentManagement = () => {
             throw new Error('请填写必要的材料信息');
           }
           result = await contentService.createMaterial(materialForm);
-          if (result.success) {
-            await loadData();
-          }
           break;
 
         case 'vocabulary':
@@ -457,9 +435,6 @@ const AdminContentManagement = () => {
             throw new Error('请填写必要的词汇信息');
           }
           result = await contentService.createVocabulary(vocabularyForm);
-          if (result.success) {
-            await loadData();
-          }
           break;
 
         case 'exercise':
@@ -467,9 +442,6 @@ const AdminContentManagement = () => {
             throw new Error('请填写必要的练习题信息');
           }
           result = await contentService.createExercise(exerciseForm);
-          if (result.success) {
-            await loadData();
-          }
           break;
 
         default:
@@ -482,6 +454,7 @@ const AdminContentManagement = () => {
           description: `${getContentTypeName(contentType)}已成功创建`,
         });
         setCreateDialogOpen(false);
+        await loadData();
       } else {
         throw new Error(result?.message || '创建失败');
       }
@@ -495,42 +468,9 @@ const AdminContentManagement = () => {
     } finally {
       setSaving(false);
     }
-  }, [contentType, courseForm, materialForm, vocabularyForm, exerciseForm, loadData, toast]);
+  }, [contentType, courseForm, materialForm, vocabularyForm, exerciseForm, loadData, toast, getContentTypeName]);
 
-  const getContentTypeName = useCallback((type: string) => {
-    const names = {
-      course: '课程',
-      material: '学习材料',
-      vocabulary: '词汇',
-      exercise: '练习题'
-    };
-    return names[type as keyof typeof names] || type;
-  }, []);
-
-  const handleBatchAction = useCallback((action: string) => {
-    if (selectedItems.length === 0) {
-      toast({
-        title: "请选择项目",
-        description: "请至少选择一个项目进行批量操作",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: `批量${action}成功`,
-      description: `已对 ${selectedItems.length} 个项目执行${action}操作`,
-    });
-    setSelectedItems([]);
-  }, [selectedItems.length, toast]);
-
-  const formatDuration = useCallback((seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }, []);
-
-  // 表单更新处理函数 - 修复版本
+  // 表单更新处理函数
   const handleCourseFormChange = useCallback((field: keyof CreateCourseData, value: any) => {
     setCourseForm(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -560,7 +500,7 @@ const AdminContentManagement = () => {
     console.log('View:', id);
   }, []);
 
-  // 使用useMemo优化计算
+  // 筛选数据
   const filteredCourses = useMemo(() => {
     return courses.filter(course => {
       const matchesSearch = searchTerm === "" || course.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -569,6 +509,34 @@ const AdminContentManagement = () => {
       return matchesSearch && matchesStatus && matchesLevel;
     });
   }, [courses, searchTerm, filterStatus, filterLevel]);
+
+  const filteredMaterials = useMemo(() => {
+    return materials.filter(material => {
+      const matchesSearch = searchTerm === "" || material.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === "all" || material.type === filterType;
+      return matchesSearch && matchesType;
+    });
+  }, [materials, searchTerm, filterType]);
+
+  const filteredVocabulary = useMemo(() => {
+    return vocabulary.filter(vocab => {
+      const matchesSearch = searchTerm === "" || 
+        vocab.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vocab.reading.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vocab.meaning.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesLevel = filterLevel === "all" || vocab.jlpt_level === filterLevel;
+      return matchesSearch && matchesLevel;
+    });
+  }, [vocabulary, searchTerm, filterLevel]);
+
+  const filteredExercises = useMemo(() => {
+    return exercises.filter(exercise => {
+      const matchesSearch = searchTerm === "" || exercise.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === "all" || exercise.type === filterType;
+      const matchesLevel = filterLevel === "all" || exercise.difficulty === filterLevel;
+      return matchesSearch && matchesType && matchesLevel;
+    });
+  }, [exercises, searchTerm, filterType, filterLevel]);
 
   if (loading) {
     return (
@@ -695,7 +663,7 @@ const AdminContentManagement = () => {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value: number) => [`${value}%`, '占比']} />
+                          <Tooltip />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -780,20 +748,10 @@ const AdminContentManagement = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    {selectedItems.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          已选择 {selectedItems.length} 项
-                        </span>
-                        <Button onClick={() => handleBatchAction("发布")} size="sm">
-                          批量发布
-                        </Button>
-                        <Button onClick={() => handleBatchAction("删除")} variant="destructive" size="sm">
-                          批量删除
-                        </Button>
-                      </div>
-                    )}
+                    <Button onClick={() => handleCreateContent('course')} className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加课程
+                    </Button>
                   </div>
 
                   <Table>
@@ -828,36 +786,454 @@ const AdminContentManagement = () => {
               </Card>
             </TabsContent>
 
-            {/* 其他标签页内容简化版本 - 为了演示性能优化 */}
+            {/* 学习材料库管理 */}
             <TabsContent value="materials" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>学习材料库</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="h-5 w-5" />
+                    学习材料库
+                  </CardTitle>
+                  <CardDescription>
+                    管理视频、音频、文本和测验等各类学习资源
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p>学习材料管理功能（已优化性能）</p>
+                  {/* 材料库统计卡片 */}
+                  <div className="grid gap-4 md:grid-cols-4 mb-6">
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <Video className="h-8 w-8 text-blue-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">视频材料</p>
+                          <p className="text-2xl font-bold">{materials.filter(m => m.type === 'video').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <Volume2 className="h-8 w-8 text-green-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">音频材料</p>
+                          <p className="text-2xl font-bold">{materials.filter(m => m.type === 'audio').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <FileText className="h-8 w-8 text-orange-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">文本材料</p>
+                          <p className="text-2xl font-bold">{materials.filter(m => m.type === 'text').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <Brain className="h-8 w-8 text-purple-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">测验材料</p>
+                          <p className="text-2xl font-bold">{materials.filter(m => m.type === 'quiz').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* 搜索和筛选 */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="搜索学习材料..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 w-64"
+                        />
+                      </div>
+                      <Select value={filterType} onValueChange={setFilterType}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="类型" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部类型</SelectItem>
+                          <SelectItem value="video">视频</SelectItem>
+                          <SelectItem value="audio">音频</SelectItem>
+                          <SelectItem value="text">文本</SelectItem>
+                          <SelectItem value="quiz">测验</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={() => handleCreateContent('material')} className="bg-green-600 hover:bg-green-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        添加材料
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 材料表格 */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox />
+                        </TableHead>
+                        <TableHead>材料标题</TableHead>
+                        <TableHead>类型</TableHead>
+                        <TableHead>所属课程</TableHead>
+                        <TableHead>时长</TableHead>
+                        <TableHead>文件大小</TableHead>
+                        <TableHead>观看/下载</TableHead>
+                        <TableHead>评分</TableHead>
+                        <TableHead>创建时间</TableHead>
+                        <TableHead>操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredMaterials.map((material) => (
+                        <TableRow key={material.id}>
+                          <TableCell>
+                            <Checkbox />
+                          </TableCell>
+                          <TableCell className="font-medium">{material.title}</TableCell>
+                          <TableCell>
+                            <TypeBadge type={material.type} />
+                          </TableCell>
+                          <TableCell>第{material.course_day}天</TableCell>
+                          <TableCell>{formatDuration(material.duration)}</TableCell>
+                          <TableCell>{material.size}</TableCell>
+                          <TableCell>{material.views}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Star className="h-4 w-4 text-yellow-400" />
+                              <span>{material.rating}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{material.created_at}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleView(material.id)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(material.id)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(material.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* 词汇库管理 */}
             <TabsContent value="vocabulary" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>词汇库管理</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    词汇库管理
+                  </CardTitle>
+                  <CardDescription>
+                    管理按JLPT级别分类的日语词汇
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p>词汇管理功能（已优化性能）</p>
+                  {/* JLPT级别统计 */}
+                  <div className="grid gap-4 md:grid-cols-5 mb-6">
+                    {['N5', 'N4', 'N3', 'N2', 'N1'].map((level) => (
+                      <Card key={level}>
+                        <CardContent className="flex items-center justify-between p-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">{level} 级词汇</p>
+                            <p className="text-2xl font-bold">
+                              {vocabulary.filter(v => v.jlpt_level === level).length}
+                            </p>
+                          </div>
+                          <Award className={`h-6 w-6 ${
+                            level === 'N1' ? 'text-red-500' :
+                            level === 'N2' ? 'text-orange-500' :
+                            level === 'N3' ? 'text-yellow-500' :
+                            level === 'N4' ? 'text-blue-500' : 'text-green-500'
+                          }`} />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* 搜索和筛选 */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="搜索日语单词、假名或中文..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 w-80"
+                        />
+                      </div>
+                      <Select value={filterLevel} onValueChange={setFilterLevel}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="JLPT级别" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部级别</SelectItem>
+                          <SelectItem value="N5">N5</SelectItem>
+                          <SelectItem value="N4">N4</SelectItem>
+                          <SelectItem value="N3">N3</SelectItem>
+                          <SelectItem value="N2">N2</SelectItem>
+                          <SelectItem value="N1">N1</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={() => handleCreateContent('vocabulary')} className="bg-purple-600 hover:bg-purple-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        添加词汇
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 词汇表格 */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox />
+                        </TableHead>
+                        <TableHead>单词</TableHead>
+                        <TableHead>读音</TableHead>
+                        <TableHead>中文意思</TableHead>
+                        <TableHead>词性</TableHead>
+                        <TableHead>JLPT级别</TableHead>
+                        <TableHead>例句</TableHead>
+                        <TableHead>掌握度</TableHead>
+                        <TableHead>添加时间</TableHead>
+                        <TableHead>操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredVocabulary.map((vocab) => (
+                        <TableRow key={vocab.id}>
+                          <TableCell>
+                            <Checkbox />
+                          </TableCell>
+                          <TableCell className="font-bold text-lg">{vocab.word}</TableCell>
+                          <TableCell className="text-blue-600">{vocab.reading}</TableCell>
+                          <TableCell>{vocab.meaning}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{vocab.part_of_speech}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${
+                              vocab.jlpt_level === 'N1' ? 'bg-red-100 text-red-800' :
+                              vocab.jlpt_level === 'N2' ? 'bg-orange-100 text-orange-800' :
+                              vocab.jlpt_level === 'N3' ? 'bg-yellow-100 text-yellow-800' :
+                              vocab.jlpt_level === 'N4' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {vocab.jlpt_level}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate" title={vocab.example_sentence}>
+                            {vocab.example_sentence}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2 w-16">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full" 
+                                  style={{ width: `${vocab.mastery_rate}%` }}
+                                />
+                              </div>
+                              <span className="text-sm">{vocab.mastery_rate}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{vocab.created_at}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleView(vocab.id)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(vocab.id)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(vocab.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* 练习题库管理 */}
             <TabsContent value="exercises" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>练习题库管理</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="h-5 w-5" />
+                    练习题库管理
+                  </CardTitle>
+                  <CardDescription>
+                    管理听力、口语、语法和词汇练习题
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p>练习题管理功能（已优化性能）</p>
+                  {/* 练习题类型统计 */}
+                  <div className="grid gap-4 md:grid-cols-4 mb-6">
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <Volume2 className="h-8 w-8 text-blue-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">听力练习</p>
+                          <p className="text-2xl font-bold">{exercises.filter(e => e.type === 'listening').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <MessageSquare className="h-8 w-8 text-green-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">口语练习</p>
+                          <p className="text-2xl font-bold">{exercises.filter(e => e.type === 'speaking').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <BookOpen className="h-8 w-8 text-orange-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">语法练习</p>
+                          <p className="text-2xl font-bold">{exercises.filter(e => e.type === 'grammar').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="flex items-center p-6">
+                        <Target className="h-8 w-8 text-purple-600 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">词汇练习</p>
+                          <p className="text-2xl font-bold">{exercises.filter(e => e.type === 'vocabulary').length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* 搜索和筛选 */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="搜索练习题..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 w-64"
+                        />
+                      </div>
+                      <Select value={filterType} onValueChange={setFilterType}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="类型" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部类型</SelectItem>
+                          <SelectItem value="listening">听力</SelectItem>
+                          <SelectItem value="speaking">口语</SelectItem>
+                          <SelectItem value="grammar">语法</SelectItem>
+                          <SelectItem value="vocabulary">词汇</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filterLevel} onValueChange={setFilterLevel}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="难度" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部难度</SelectItem>
+                          <SelectItem value="easy">简单</SelectItem>
+                          <SelectItem value="medium">中等</SelectItem>
+                          <SelectItem value="hard">困难</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={() => handleCreateContent('exercise')} className="bg-red-600 hover:bg-red-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        添加练习题
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 练习题表格 */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox />
+                        </TableHead>
+                        <TableHead>题目标题</TableHead>
+                        <TableHead>类型</TableHead>
+                        <TableHead>所属课程</TableHead>
+                        <TableHead>难度</TableHead>
+                        <TableHead>完成率</TableHead>
+                        <TableHead>平均得分</TableHead>
+                        <TableHead>创建时间</TableHead>
+                        <TableHead>操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredExercises.map((exercise) => (
+                        <TableRow key={exercise.id}>
+                          <TableCell>
+                            <Checkbox />
+                          </TableCell>
+                          <TableCell className="font-medium">{exercise.title}</TableCell>
+                          <TableCell>
+                            <TypeBadge type={exercise.type} />
+                          </TableCell>
+                          <TableCell>第{exercise.course_day}天</TableCell>
+                          <TableCell>
+                            <DifficultyBadge difficulty={exercise.difficulty} />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2 w-16">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{ width: `${exercise.completion_rate}%` }}
+                                />
+                              </div>
+                              <span className="text-sm">{exercise.completion_rate}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <BarChart3 className="h-4 w-4 text-green-500" />
+                              <span>{exercise.average_score}分</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{exercise.created_at}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleView(exercise.id)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(exercise.id)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(exercise.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -874,13 +1250,11 @@ const AdminContentManagement = () => {
               </DialogHeader>
               
               <div className="space-y-6">
-                {/* 使用优化的内容类型选择器 */}
                 <ContentTypeSelector 
                   contentType={contentType} 
                   onTypeChange={setContentType} 
                 />
 
-                {/* 使用优化的表单组件 */}
                 {contentType === 'course' && (
                   <CourseForm 
                     form={courseForm}
