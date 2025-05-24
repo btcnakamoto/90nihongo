@@ -33,7 +33,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/referrals/stats', [SubscriptionController::class, 'getReferralStats']);
     });
     
-    // 内容管理
+    // 内容管理 - 特定路由必须在资源路由之前
+    Route::prefix('content')->group(function () {
+        // 获取数据的路由
+        Route::get('/stats', [ContentController::class, 'getStats']);
+        Route::get('/courses', [ContentController::class, 'getCourses']);
+        Route::get('/materials', [ContentController::class, 'getMaterials']);
+        Route::get('/vocabulary', [ContentController::class, 'getVocabulary']);
+        Route::get('/exercises', [ContentController::class, 'getExercises']);
+        
+        // 创建内容的路由
+        Route::post('/courses', [ContentController::class, 'createCourse']);
+        Route::post('/materials', [ContentController::class, 'createMaterial']);
+        Route::post('/vocabulary', [ContentController::class, 'createVocabulary']);
+        Route::post('/exercises', [ContentController::class, 'createExercise']);
+        
+        // 文件上传
+        Route::post('/upload', [ContentController::class, 'uploadFile']);
+    });
     Route::apiResource('/content', ContentController::class);
     
     // 数据库备份管理
