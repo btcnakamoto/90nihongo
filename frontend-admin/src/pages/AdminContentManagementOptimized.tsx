@@ -22,16 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import {
-  BookOpen,
-  Plus,
-  Upload,
-  RefreshCw,
-  BarChart3,
-  Layers,
-  Target,
-  TrendingUp
-} from 'lucide-react';
+import {  BookOpen,  Plus,  Upload,  RefreshCw,  BarChart3,  Layers,  Target,  TrendingUp,  Volume2,  Link} from 'lucide-react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import TopNavbar from '@/components/admin/TopNavbar';
 import PageHeader from '@/components/admin/PageHeader';
@@ -45,7 +36,7 @@ import {
   VocabularyForm, 
   ExerciseForm 
 } from '@/components/admin/ContentFormComponents';
-import BatchImportDialog from '@/components/admin/BatchImportDialog';
+import BatchImportDialog from '@/components/admin/BatchImportDialog';import AudioFileManager from '@/components/admin/AudioFileManager';import AudioContentLinker from '@/components/admin/AudioContentLinker';
 
 // 移除了占位符组件，现在使用完整功能的优化组件
 
@@ -110,9 +101,15 @@ const AdminContentManagementOptimized = () => {
   // 对话框状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [batchImportDialogOpen, setBatchImportDialogOpen] = useState(false);
+  const [audioManagerOpen, setAudioManagerOpen] = useState(false);
+  const [audioLinkerOpen, setAudioLinkerOpen] = useState(false);
   const [contentType, setContentType] = useState<'course' | 'material' | 'vocabulary' | 'exercise'>('course');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  
+  // 音频关联数据
+  const [audioFiles, setAudioFiles] = useState<any[]>([]);
+  const [loadingAudioFiles, setLoadingAudioFiles] = useState(false);
 
   // 表单状态
   const [courseForm, setCourseForm] = useState<CreateCourseData>({
@@ -497,6 +494,167 @@ const AdminContentManagementOptimized = () => {
     });
   }, [reloadCurrentTabData, toast]);
 
+  // 音频管理处理函数
+  const handleAudioManager = useCallback(() => {
+    // 根据当前标签页确定音频类型
+    let audioType: 'vocabulary' | 'course' | 'material' | 'exercise';
+    switch (activeTab) {
+      case 'courses':
+        audioType = 'course';
+        break;
+      case 'materials':
+        audioType = 'material';
+        break;
+      case 'vocabulary':
+        audioType = 'vocabulary';
+        break;
+      case 'exercises':
+        audioType = 'exercise';
+        break;
+      default:
+        audioType = 'vocabulary';
+    }
+    setContentType(audioType);
+    setAudioManagerOpen(true);
+  }, [activeTab]);
+
+  const handleAudioUploadComplete = useCallback(async (uploadedFiles: any[]) => {
+    setAudioManagerOpen(false);
+    // 这里可以处理上传完成的音频文件，比如更新关联数据
+    toast({
+      title: "音频上传完成",
+      description: `成功上传 ${uploadedFiles.length} 个音频文件`,
+    });
+    await reloadCurrentTabData();
+  }, [reloadCurrentTabData, toast]);
+
+  // 获取关联数据用于音频文件关联
+  const getAssociationData = useCallback(() => {
+    switch (activeTab) {
+      case 'courses':
+        return courses.map(course => ({
+          id: course.id,
+          name: course.title,
+          key: `day${course.day_number}`
+        }));
+      case 'materials':
+        return materials.map(material => ({
+          id: material.id,
+          name: material.title,
+          key: material.type
+        }));
+      case 'vocabulary':
+        return vocabulary.map(vocab => ({
+          id: vocab.id,
+          name: vocab.word,
+          key: vocab.reading
+        }));
+      case 'exercises':
+        return exercises.map(exercise => ({
+          id: exercise.id,
+          name: exercise.title,
+          key: exercise.type
+        }));
+      default:
+        return [];
+    }
+  }, [activeTab, courses, materials, vocabulary, exercises]);
+
+  // 获取当前内容项目数据用于音频关联
+  const getCurrentContentItems = useCallback(() => {
+    switch (activeTab) {
+      case 'courses':
+        return courses.map(course => ({
+          id: course.id,
+          title: course.title,
+          type: 'course' as const,
+          day_number: course.day_number,
+          key: `day${course.day_number}`
+        }));
+      case 'materials':
+        return materials.map(material => ({
+          id: material.id,
+          title: material.title,
+          type: 'material' as const,
+          key: material.type
+        }));
+      case 'vocabulary':
+        return vocabulary.map(vocab => ({
+          id: vocab.id,
+          title: vocab.word,
+          type: 'vocabulary' as const,
+          jlpt_level: vocab.jlpt_level,
+          key: vocab.reading
+        }));
+      case 'exercises':
+        return exercises.map(exercise => ({
+          id: exercise.id,
+          title: exercise.title,
+          type: 'exercise' as const,
+          key: exercise.type
+        }));
+      default:
+        return [];
+    }
+  }, [activeTab, courses, materials, vocabulary, exercises]);
+
+  // 加载音频文件列表
+  const loadAudioFiles = useCallback(async () => {
+    try {
+      setLoadingAudioFiles(true);
+      const response = await contentService.getAudioFiles();
+      if (response.success) {
+        setAudioFiles(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load audio files:', error);
+      toast({
+        title: "加载失败",
+        description: "无法加载音频文件列表，请稍后重试",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAudioFiles(false);
+    }
+  }, [toast]);
+
+  // 音频智能关联处理函数
+  const handleAudioLinker = useCallback(async () => {
+    // 首先加载音频文件
+    await loadAudioFiles();
+    
+    // 根据当前标签页确定内容类型
+    let linkType: 'vocabulary' | 'course' | 'material' | 'exercise';
+    switch (activeTab) {
+      case 'courses':
+        linkType = 'course';
+        break;
+      case 'materials':
+        linkType = 'material';
+        break;
+      case 'vocabulary':
+        linkType = 'vocabulary';
+        break;
+      case 'exercises':
+        linkType = 'exercise';
+        break;
+      default:
+        linkType = 'vocabulary';
+    }
+    setContentType(linkType);
+    setAudioLinkerOpen(true);
+  }, [activeTab, loadAudioFiles]);
+
+  const handleAudioLinkComplete = useCallback(async (linkedPairs: Array<{ audioId: number; contentId: number }>) => {
+    setAudioLinkerOpen(false);
+    // 处理关联完成后的逻辑，比如刷新数据
+    toast({
+      title: "关联完成",
+      description: `成功关联 ${linkedPairs.length} 个音频文件`,
+    });
+    await reloadCurrentTabData();
+  }, [reloadCurrentTabData, toast]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
@@ -534,7 +692,7 @@ const AdminContentManagementOptimized = () => {
               <Plus className="h-4 w-4 mr-2" />
               创建内容
             </Button>
-                                    <Button variant="outline" onClick={handleBatchImport}>              <Upload className="h-4 w-4 mr-2" />              批量导入            </Button>
+            <Button variant="outline" onClick={handleBatchImport}>              <Upload className="h-4 w-4 mr-2" />              批量导入            </Button>            <Button variant="outline" onClick={handleAudioManager}>              <Volume2 className="h-4 w-4 mr-2" />              音频管理            </Button>            <Button variant="outline" onClick={handleAudioLinker}>              <Link className="h-4 w-4 mr-2" />              智能关联            </Button>
           </PageHeader>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
@@ -754,6 +912,4 @@ const AdminContentManagementOptimized = () => {
                     </>
                   )}
                 </Button>
-                            </DialogFooter>            </DialogContent>          </Dialog>          {/* 批量导入对话框 */}          <BatchImportDialog            open={batchImportDialogOpen}            onOpenChange={setBatchImportDialogOpen}            contentType={contentType}            onImportComplete={handleBatchImportComplete}          />        </main>      </div>    </div>  );};
-
-export default AdminContentManagementOptimized; 
+              </DialogFooter>            </DialogContent>          </Dialog>          {/* 批量导入对话框 */}          <BatchImportDialog            open={batchImportDialogOpen}            onOpenChange={setBatchImportDialogOpen}            contentType={contentType}            onImportComplete={handleBatchImportComplete}          />          {/* 音频文件管理器 */}          <AudioFileManager            open={audioManagerOpen}            onOpenChange={setAudioManagerOpen}            contentType={contentType}            associationData={getAssociationData()}            onComplete={handleAudioUploadComplete}          />          {/* 音频内容智能关联器 */}          <AudioContentLinker            open={audioLinkerOpen}            onOpenChange={setAudioLinkerOpen}            contentType={contentType}            audioFiles={audioFiles}            contentItems={getCurrentContentItems()}            onLinkComplete={handleAudioLinkComplete}          />        </main>      </div>    </div>  );};export default AdminContentManagementOptimized; 

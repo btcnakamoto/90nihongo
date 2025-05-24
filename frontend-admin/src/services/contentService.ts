@@ -269,5 +269,27 @@ export const contentService = {
       responseType: 'blob'
     });
     return response.data;
+  },
+
+  // 音频文件关联到内容
+  async linkAudioToContent(audioId: number, contentId: number, contentType: string): Promise<{ success: boolean; message?: string }> {
+    const response = await api.post('/admin/content/link-audio', {
+      audio_id: audioId,
+      content_id: contentId,
+      content_type: contentType
+    });
+    return response.data;
+  },
+
+  // 获取音频文件列表
+  async getAudioFiles(): Promise<{ success: boolean; data: any[] }> {
+    const response = await api.get('/admin/content/audio-files');
+    return response.data;
+  },
+
+  // 获取内容关联的音频文件
+  async getContentAudio(contentId: number, contentType: string): Promise<{ success: boolean; data: any }> {
+    const response = await api.get(`/admin/content/${contentType}/${contentId}/audio`);
+    return response.data;
   }
 };
