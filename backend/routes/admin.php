@@ -1,13 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\AuthController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\ContentController;
-use App\Http\Controllers\Admin\MaterialController;
-use App\Http\Controllers\Admin\DatabaseBackupController;
-use App\Http\Controllers\Admin\SubscriptionController;
-use App\Http\Controllers\Admin\ResourceController;
+use App\Http\Controllers\Admin\AuthController;use App\Http\Controllers\Admin\UserController;use App\Http\Controllers\Admin\ContentController;use App\Http\Controllers\Admin\MaterialController;use App\Http\Controllers\Admin\DatabaseBackupController;use App\Http\Controllers\Admin\SubscriptionController;use App\Http\Controllers\Admin\ResourceController;use App\Http\Controllers\Admin\BilibiliExtractorController;
 
 // 登录接口（无需认证）
 Route::post('/login', [AuthController::class, 'login']);
@@ -86,15 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{resourceId}', [ResourceController::class, 'deleteResource']);
     });
     
-    // 数据库备份管理
-    Route::prefix('database')->group(function () {
-        Route::get('/status', [DatabaseBackupController::class, 'status']);
-        Route::get('/backups', [DatabaseBackupController::class, 'index']);
-        Route::post('/backups', [DatabaseBackupController::class, 'store']);
-        Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);
-        Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);
-        Route::post('/restore', [DatabaseBackupController::class, 'restore']);
-    });
+        // B站视频提取管理    Route::prefix('bilibili')->group(function () {        Route::post('/video-info', [BilibiliExtractorController::class, 'getVideoInfo']);        Route::post('/extract', [BilibiliExtractorController::class, 'submitExtraction']);        Route::get('/jobs', [BilibiliExtractorController::class, 'getJobs']);        Route::get('/jobs/{jobId}', [BilibiliExtractorController::class, 'getJob']);        Route::delete('/jobs/{jobId}', [BilibiliExtractorController::class, 'deleteJob']);        Route::post('/jobs/{jobId}/retry', [BilibiliExtractorController::class, 'retryJob']);        Route::get('/jobs/{jobId}/download/{fileType}', [BilibiliExtractorController::class, 'downloadFile']);        Route::get('/system-status', [BilibiliExtractorController::class, 'getSystemStatus']);    });    // 数据库备份管理    Route::prefix('database')->group(function () {        Route::get('/status', [DatabaseBackupController::class, 'status']);        Route::get('/backups', [DatabaseBackupController::class, 'index']);        Route::post('/backups', [DatabaseBackupController::class, 'store']);        Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);        Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);        Route::post('/restore', [DatabaseBackupController::class, 'restore']);    });
     
     // 统计信息
     Route::get('/stats', function () {
