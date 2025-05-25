@@ -77,10 +77,34 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/api-import', [ResourceController::class, 'startApiImport']);
         Route::patch('/tasks/{taskId}/toggle', [ResourceController::class, 'toggleTask']);
         Route::delete('/tasks/{taskId}', [ResourceController::class, 'cancelTask']);
+        
+        // B站视频提取管理 - 必须在通用路由之前
+        Route::prefix('bilibili')->group(function () {
+            Route::post('/video-info', [BilibiliExtractorController::class, 'getVideoInfo']);
+            Route::post('/extract', [BilibiliExtractorController::class, 'submitExtraction']);
+            Route::get('/jobs', [BilibiliExtractorController::class, 'getJobs']);
+            Route::get('/jobs/{jobId}', [BilibiliExtractorController::class, 'getJob']);
+            Route::delete('/jobs/{jobId}', [BilibiliExtractorController::class, 'deleteJob']);
+            Route::post('/jobs/{jobId}/retry', [BilibiliExtractorController::class, 'retryJob']);
+            Route::get('/jobs/{jobId}/download/{fileType}', [BilibiliExtractorController::class, 'downloadFile']);
+            Route::get('/system-status', [BilibiliExtractorController::class, 'getSystemStatus']);
+        });
+        
+        // 通用资源删除路由 - 必须在最后
         Route::delete('/{resourceId}', [ResourceController::class, 'deleteResource']);
     });
     
-        // B站视频提取管理    Route::prefix('bilibili')->group(function () {        Route::post('/video-info', [BilibiliExtractorController::class, 'getVideoInfo']);        Route::post('/extract', [BilibiliExtractorController::class, 'submitExtraction']);        Route::get('/jobs', [BilibiliExtractorController::class, 'getJobs']);        Route::get('/jobs/{jobId}', [BilibiliExtractorController::class, 'getJob']);        Route::delete('/jobs/{jobId}', [BilibiliExtractorController::class, 'deleteJob']);        Route::post('/jobs/{jobId}/retry', [BilibiliExtractorController::class, 'retryJob']);        Route::get('/jobs/{jobId}/download/{fileType}', [BilibiliExtractorController::class, 'downloadFile']);        Route::get('/system-status', [BilibiliExtractorController::class, 'getSystemStatus']);    });    // 数据库备份管理    Route::prefix('database')->group(function () {        Route::get('/status', [DatabaseBackupController::class, 'status']);        Route::get('/backups', [DatabaseBackupController::class, 'index']);        Route::post('/backups', [DatabaseBackupController::class, 'store']);        Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);        Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);        Route::post('/restore', [DatabaseBackupController::class, 'restore']);    });
+    // 数据库备份管理
+    Route::prefix('database')->group(function () {
+        Route::get('/status', [DatabaseBackupController::class, 'status']);
+        Route::get('/tables', [DatabaseBackupController::class, 'tables']);
+        Route::get('/backups', [DatabaseBackupController::class, 'index']);
+        Route::post('/backups', [DatabaseBackupController::class, 'store']);
+        Route::post('/backups/tables', [DatabaseBackupController::class, 'backupTables']);
+        Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);
+        Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);
+        Route::post('/restore', [DatabaseBackupController::class, 'restore']);
+    });
     
     // 统计信息
     Route::get('/stats', function () {

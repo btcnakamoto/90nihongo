@@ -126,6 +126,7 @@ const AdminDatabaseBackup = () => {
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const [showTableBackupDialog, setShowTableBackupDialog] = useState(false);
   const [tableBackupDescription, setTableBackupDescription] = useState("");
+  const [dataSource, setDataSource] = useState<'api' | 'mock'>('api');
 
   const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -158,15 +159,22 @@ const AdminDatabaseBackup = () => {
   // 获取数据库表信息
   const fetchDatabaseTables = async () => {
     setTablesLoading(true);
+    console.log('开始获取数据库表信息...', `${API_BASE}/admin/database/tables`);
+    
     try {
       const response = await axios.get<BackupResponse>(
         `${API_BASE}/admin/database/tables`,
         { headers: getAuthHeaders() }
       );
       
+      console.log('API响应:', response.data); // 添加调试日志
+      
       if (response.data.code === 200) {
+        console.log('成功获取表数据:', response.data.data.length, '个表');
         setDatabaseTables(response.data.data);
+        setDataSource('api');
       } else {
+        console.log('API返回错误码:', response.data.code, response.data.message);
         // 如果接口不存在，使用模拟数据
         const mockTables: DatabaseTable[] = [
           {
@@ -296,12 +304,262 @@ const AdminDatabaseBackup = () => {
             table_comment: "数据库迁移记录",
             size_human: "14 KB",
             total_size: 13952
+          },
+          // 添加更多可能的表
+          {
+            table_name: "user_subscriptions",
+            engine: "InnoDB",
+            rows: 1180,
+            avg_row_length: 256,
+            data_length: 302080,
+            index_length: 49152,
+            data_free: 0,
+            auto_increment: 1181,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 14:30:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "用户订阅表",
+            size_human: "343 KB",
+            total_size: 351232
+          },
+          {
+            table_name: "content_items",
+            engine: "InnoDB",
+            rows: 3456,
+            avg_row_length: 1536,
+            data_length: 5308416,
+            index_length: 262144,
+            data_free: 0,
+            auto_increment: 3457,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 15:15:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "内容项目表",
+            size_human: "5.3 MB",
+            total_size: 5570560
+          },
+          {
+            table_name: "bilibili_videos",
+            engine: "InnoDB",
+            rows: 567,
+            avg_row_length: 768,
+            data_length: 435456,
+            index_length: 81920,
+            data_free: 0,
+            auto_increment: 568,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 13:20:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "B站视频信息表",
+            size_human: "505 KB",
+            total_size: 517376
+          },
+          {
+            table_name: "scraped_content",
+            engine: "InnoDB",
+            rows: 2890,
+            avg_row_length: 2048,
+            data_length: 5918720,
+            index_length: 196608,
+            data_free: 0,
+            auto_increment: 2891,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 16:00:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "爬取内容表",
+            size_human: "5.8 MB",
+            total_size: 6115328
+          },
+          {
+            table_name: "file_uploads",
+            engine: "InnoDB",
+            rows: 789,
+            avg_row_length: 512,
+            data_length: 404480,
+            index_length: 65536,
+            data_free: 0,
+            auto_increment: 790,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 12:10:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "文件上传记录表",
+            size_human: "459 KB",
+            total_size: 470016
+          },
+          {
+            table_name: "api_import_logs",
+            engine: "InnoDB",
+            rows: 1234,
+            avg_row_length: 384,
+            data_length: 473856,
+            index_length: 81920,
+            data_free: 0,
+            auto_increment: 1235,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 14:45:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "API导入日志表",
+            size_human: "543 KB",
+            total_size: 555776
+          },
+          {
+            table_name: "task_management",
+            engine: "InnoDB",
+            rows: 456,
+            avg_row_length: 640,
+            data_length: 291840,
+            index_length: 49152,
+            data_free: 0,
+            auto_increment: 457,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 11:30:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "任务管理表",
+            size_human: "333 KB",
+            total_size: 340992
+          },
+          {
+            table_name: "system_settings",
+            engine: "InnoDB",
+            rows: 67,
+            avg_row_length: 256,
+            data_length: 17152,
+            index_length: 16384,
+            data_free: 0,
+            auto_increment: 68,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 09:15:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "系统设置表",
+            size_human: "33 KB",
+            total_size: 33536
+          },
+          {
+            table_name: "backup_files",
+            engine: "InnoDB",
+            rows: 23,
+            avg_row_length: 512,
+            data_length: 11776,
+            index_length: 16384,
+            data_free: 0,
+            auto_increment: 24,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 17:00:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "备份文件记录表",
+            size_human: "27 KB",
+            total_size: 28160
+          },
+          {
+            table_name: "user_analytics",
+            engine: "InnoDB",
+            rows: 12567,
+            avg_row_length: 128,
+            data_length: 1608576,
+            index_length: 327680,
+            data_free: 0,
+            auto_increment: 12568,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 16:30:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "用户行为分析表",
+            size_human: "1.8 MB",
+            total_size: 1936256
+          },
+          {
+            table_name: "oauth_access_tokens",
+            engine: "InnoDB",
+            rows: 2340,
+            avg_row_length: 256,
+            data_length: 599040,
+            index_length: 98304,
+            data_free: 0,
+            auto_increment: null,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 15:45:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "OAuth访问令牌表",
+            size_human: "681 KB",
+            total_size: 697344
+          },
+          {
+            table_name: "password_resets",
+            engine: "InnoDB",
+            rows: 156,
+            avg_row_length: 128,
+            data_length: 19968,
+            index_length: 16384,
+            data_free: 0,
+            auto_increment: null,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 08:20:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "密码重置表",
+            size_human: "36 KB",
+            total_size: 36352
+          },
+          {
+            table_name: "failed_jobs",
+            engine: "InnoDB",
+            rows: 12,
+            avg_row_length: 512,
+            data_length: 6144,
+            index_length: 16384,
+            data_free: 0,
+            auto_increment: 13,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-19 22:30:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "失败任务表",
+            size_human: "22 KB",
+            total_size: 22528
+          },
+          {
+            table_name: "notifications",
+            engine: "InnoDB",
+            rows: 5678,
+            avg_row_length: 256,
+            data_length: 1453568,
+            index_length: 131072,
+            data_free: 0,
+            auto_increment: 5679,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 17:10:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "系统通知表",
+            size_human: "1.5 MB",
+            total_size: 1584640
+          },
+          {
+            table_name: "cache",
+            engine: "InnoDB",
+            rows: 3456,
+            avg_row_length: 1024,
+            data_length: 3538944,
+            index_length: 262144,
+            data_free: 0,
+            auto_increment: null,
+            create_time: "2024-01-01 10:00:00",
+            update_time: "2024-01-20 16:55:00",
+            table_collation: "utf8mb4_unicode_ci",
+            table_comment: "缓存表",
+            size_human: "3.6 MB",
+            total_size: 3801088
           }
         ];
+        console.log('使用扩展模拟数据，共', mockTables.length, '个表');
         setDatabaseTables(mockTables);
+        setDataSource('mock');
+        
+        toast({
+          title: "使用模拟数据",
+          description: `API接口返回错误，已加载 ${mockTables.length} 个模拟表数据`,
+          variant: "default",
+        });
       }
     } catch (error: any) {
-      // 使用模拟数据作为后备
+      console.error('获取表数据失败:', error);
+      // 使用扩展的模拟数据作为后备
       const mockTables: DatabaseTable[] = [
         {
           table_name: "users",
@@ -430,9 +688,258 @@ const AdminDatabaseBackup = () => {
           table_comment: "数据库迁移记录",
           size_human: "14 KB",
           total_size: 13952
+        },
+        // 添加更多可能的表
+        {
+          table_name: "user_subscriptions",
+          engine: "InnoDB",
+          rows: 1180,
+          avg_row_length: 256,
+          data_length: 302080,
+          index_length: 49152,
+          data_free: 0,
+          auto_increment: 1181,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 14:30:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "用户订阅表",
+          size_human: "343 KB",
+          total_size: 351232
+        },
+        {
+          table_name: "content_items",
+          engine: "InnoDB",
+          rows: 3456,
+          avg_row_length: 1536,
+          data_length: 5308416,
+          index_length: 262144,
+          data_free: 0,
+          auto_increment: 3457,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 15:15:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "内容项目表",
+          size_human: "5.3 MB",
+          total_size: 5570560
+        },
+        {
+          table_name: "bilibili_videos",
+          engine: "InnoDB",
+          rows: 567,
+          avg_row_length: 768,
+          data_length: 435456,
+          index_length: 81920,
+          data_free: 0,
+          auto_increment: 568,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 13:20:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "B站视频信息表",
+          size_human: "505 KB",
+          total_size: 517376
+        },
+        {
+          table_name: "scraped_content",
+          engine: "InnoDB",
+          rows: 2890,
+          avg_row_length: 2048,
+          data_length: 5918720,
+          index_length: 196608,
+          data_free: 0,
+          auto_increment: 2891,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 16:00:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "爬取内容表",
+          size_human: "5.8 MB",
+          total_size: 6115328
+        },
+        {
+          table_name: "file_uploads",
+          engine: "InnoDB",
+          rows: 789,
+          avg_row_length: 512,
+          data_length: 404480,
+          index_length: 65536,
+          data_free: 0,
+          auto_increment: 790,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 12:10:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "文件上传记录表",
+          size_human: "459 KB",
+          total_size: 470016
+        },
+        {
+          table_name: "api_import_logs",
+          engine: "InnoDB",
+          rows: 1234,
+          avg_row_length: 384,
+          data_length: 473856,
+          index_length: 81920,
+          data_free: 0,
+          auto_increment: 1235,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 14:45:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "API导入日志表",
+          size_human: "543 KB",
+          total_size: 555776
+        },
+        {
+          table_name: "task_management",
+          engine: "InnoDB",
+          rows: 456,
+          avg_row_length: 640,
+          data_length: 291840,
+          index_length: 49152,
+          data_free: 0,
+          auto_increment: 457,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 11:30:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "任务管理表",
+          size_human: "333 KB",
+          total_size: 340992
+        },
+        {
+          table_name: "system_settings",
+          engine: "InnoDB",
+          rows: 67,
+          avg_row_length: 256,
+          data_length: 17152,
+          index_length: 16384,
+          data_free: 0,
+          auto_increment: 68,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 09:15:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "系统设置表",
+          size_human: "33 KB",
+          total_size: 33536
+        },
+        {
+          table_name: "backup_files",
+          engine: "InnoDB",
+          rows: 23,
+          avg_row_length: 512,
+          data_length: 11776,
+          index_length: 16384,
+          data_free: 0,
+          auto_increment: 24,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 17:00:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "备份文件记录表",
+          size_human: "27 KB",
+          total_size: 28160
+        },
+        {
+          table_name: "user_analytics",
+          engine: "InnoDB",
+          rows: 12567,
+          avg_row_length: 128,
+          data_length: 1608576,
+          index_length: 327680,
+          data_free: 0,
+          auto_increment: 12568,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 16:30:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "用户行为分析表",
+          size_human: "1.8 MB",
+          total_size: 1936256
+        },
+        {
+          table_name: "oauth_access_tokens",
+          engine: "InnoDB",
+          rows: 2340,
+          avg_row_length: 256,
+          data_length: 599040,
+          index_length: 98304,
+          data_free: 0,
+          auto_increment: null,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 15:45:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "OAuth访问令牌表",
+          size_human: "681 KB",
+          total_size: 697344
+        },
+        {
+          table_name: "password_resets",
+          engine: "InnoDB",
+          rows: 156,
+          avg_row_length: 128,
+          data_length: 19968,
+          index_length: 16384,
+          data_free: 0,
+          auto_increment: null,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 08:20:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "密码重置表",
+          size_human: "36 KB",
+          total_size: 36352
+        },
+        {
+          table_name: "failed_jobs",
+          engine: "InnoDB",
+          rows: 12,
+          avg_row_length: 512,
+          data_length: 6144,
+          index_length: 16384,
+          data_free: 0,
+          auto_increment: 13,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-19 22:30:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "失败任务表",
+          size_human: "22 KB",
+          total_size: 22528
+        },
+        {
+          table_name: "notifications",
+          engine: "InnoDB",
+          rows: 5678,
+          avg_row_length: 256,
+          data_length: 1453568,
+          index_length: 131072,
+          data_free: 0,
+          auto_increment: 5679,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 17:10:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "系统通知表",
+          size_human: "1.5 MB",
+          total_size: 1584640
+        },
+        {
+          table_name: "cache",
+          engine: "InnoDB",
+          rows: 3456,
+          avg_row_length: 1024,
+          data_length: 3538944,
+          index_length: 262144,
+          data_free: 0,
+          auto_increment: null,
+          create_time: "2024-01-01 10:00:00",
+          update_time: "2024-01-20 16:55:00",
+          table_collation: "utf8mb4_unicode_ci",
+          table_comment: "缓存表",
+          size_human: "3.6 MB",
+          total_size: 3801088
         }
       ];
+      console.log('网络错误，使用扩展模拟数据，共', mockTables.length, '个表');
       setDatabaseTables(mockTables);
+      setDataSource('mock');
+      
+      toast({
+        title: "使用模拟数据",
+        description: `网络连接失败，已加载 ${mockTables.length} 个模拟表数据`,
+        variant: "default",
+      });
     } finally {
       setTablesLoading(false);
     }
@@ -766,7 +1273,7 @@ const AdminDatabaseBackup = () => {
 
           {/* 主要内容选项卡 */}
           <Tabs defaultValue="backups" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="backups" className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
                 备份文件
@@ -774,6 +1281,10 @@ const AdminDatabaseBackup = () => {
               <TabsTrigger value="tables" className="flex items-center gap-2">
                 <TableIcon className="h-4 w-4" />
                 数据表管理
+              </TabsTrigger>
+              <TabsTrigger value="table-list" className="flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                所有表列表
               </TabsTrigger>
             </TabsList>
 
@@ -896,9 +1407,24 @@ const AdminDatabaseBackup = () => {
                         <span className="text-sm font-normal text-gray-500">
                           ({databaseTables.length} 个表)
                         </span>
+                        {dataSource === 'mock' && (
+                          <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                            模拟数据
+                          </Badge>
+                        )}
+                        {dataSource === 'api' && (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                            实时数据
+                          </Badge>
+                        )}
                       </CardTitle>
                       <CardDescription>
                         查看数据库表信息并进行选择性备份
+                        {dataSource === 'mock' && (
+                          <div className="mt-1 text-xs text-yellow-700">
+                            当前显示模拟数据，实际表可能有所不同
+                          </div>
+                        )}
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1062,6 +1588,182 @@ const AdminDatabaseBackup = () => {
                           ))}
                         </TableBody>
                       </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* 所有表列表选项卡 */}
+            <TabsContent value="table-list">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Server className="h-5 w-5" />
+                    所有表列表
+                    <span className="text-sm font-normal text-gray-500">
+                      ({databaseTables.length} 个表)
+                    </span>
+                    {dataSource === 'mock' && (
+                      <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                        模拟数据
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    查看所有数据库表的详细信息和统计数据
+                    {dataSource === 'mock' && (
+                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                        ⚠️ 当前显示的是模拟数据。请检查API连接或联系系统管理员获取实时数据。
+                      </div>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {tablesLoading ? (
+                    <div className="p-8 text-center">
+                      <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-nihongo-indigo" />
+                      <p className="text-gray-500">加载表列表中...</p>
+                    </div>
+                  ) : databaseTables.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Server className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">未找到表</h3>
+                      <p className="text-gray-500">数据库中没有可用的表</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* 统计信息 */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Server className="h-5 w-5 text-blue-500" />
+                          <div>
+                            <p className="text-sm text-gray-600">总表数</p>
+                            <p className="font-semibold text-nihongo-darkBlue">
+                              {databaseTables.length} 个
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Rows className="h-5 w-5 text-green-500" />
+                          <div>
+                            <p className="text-sm text-gray-600">总记录数</p>
+                            <p className="font-semibold text-nihongo-darkBlue">
+                              {databaseTables.reduce((sum, table) => sum + table.rows, 0).toLocaleString()} 条
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <HardDrive className="h-5 w-5 text-orange-500" />
+                          <div>
+                            <p className="text-sm text-gray-600">总数据大小</p>
+                            <p className="font-semibold text-nihongo-darkBlue">
+                              {(databaseTables.reduce((sum, table) => sum + table.total_size, 0) / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Database className="h-5 w-5 text-purple-500" />
+                          <div>
+                            <p className="text-sm text-gray-600">引擎类型</p>
+                            <p className="font-semibold text-nihongo-darkBlue">
+                              {[...new Set(databaseTables.map(t => t.engine))].join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 详细表格 */}
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>表名</TableHead>
+                              <TableHead>存储引擎</TableHead>
+                              <TableHead>记录数</TableHead>
+                              <TableHead>数据大小</TableHead>
+                              <TableHead>索引大小</TableHead>
+                              <TableHead>平均行长度</TableHead>
+                              <TableHead>字符集</TableHead>
+                              <TableHead>创建时间</TableHead>
+                              <TableHead>更新时间</TableHead>
+                              <TableHead>自增值</TableHead>
+                              <TableHead>备注</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {databaseTables.map((table) => (
+                              <TableRow key={table.table_name}>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    <TableIcon className="h-4 w-4 text-blue-500" />
+                                    {table.table_name}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">{table.engine}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Rows className="h-3 w-3 text-gray-400" />
+                                    {table.rows.toLocaleString()}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    <div>{(table.data_length / 1024).toFixed(1)} KB</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    <div>{(table.index_length / 1024).toFixed(1)} KB</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    {table.avg_row_length} bytes
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {table.table_collation.split('_')[0]}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Clock className="h-3 w-3 text-gray-400" />
+                                    {new Date(table.create_time).toLocaleDateString()}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {table.update_time ? (
+                                    <div className="flex items-center gap-1 text-sm">
+                                      <Clock className="h-3 w-3 text-gray-400" />
+                                      {new Date(table.update_time).toLocaleDateString()}
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {table.auto_increment ? (
+                                    <div className="text-sm font-mono">
+                                      {table.auto_increment.toLocaleString()}
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-sm text-gray-600">
+                                    {table.table_comment || "-"}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   )}
                 </CardContent>

@@ -22,14 +22,14 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
+            // 管理端API路由
+            Route::middleware('api')
+                ->prefix('admin')
+                ->group(base_path('routes/admin.php'));
+
             // Web路由
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
-                
-            // 管理端API路由
-            Route::middleware('api')
-                ->prefix('admin')  // 修改前缀以区分管理端API
-                ->group(base_path('routes/admin.php'));
         });
     }
 } 

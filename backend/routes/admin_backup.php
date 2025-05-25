@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('/content', ContentController::class);        // 学习材料专门管理路由    Route::prefix('materials')->group(function () {        Route::get('/', [MaterialController::class, 'getMaterialsWithFilters']);        Route::get('/stats', [MaterialController::class, 'getMaterialStats']);        Route::get('/{id}', [MaterialController::class, 'getMaterialDetail']);        Route::post('/batch-operation', [MaterialController::class, 'batchOperation']);    });        // 数据库备份管理
     Route::prefix('database')->group(function () {
         Route::get('/status', [DatabaseBackupController::class, 'status']);
+        Route::get('/tables', [DatabaseBackupController::class, 'tables']);
         Route::get('/backups', [DatabaseBackupController::class, 'index']);
         Route::post('/backups', [DatabaseBackupController::class, 'store']);
         Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);

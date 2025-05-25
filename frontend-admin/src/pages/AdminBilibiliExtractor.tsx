@@ -24,7 +24,7 @@ import {
   ExternalLink,
   RefreshCw,
   Settings,
-  Upload
+  Copy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -40,6 +40,7 @@ interface ExtractionJob {
   audioPath?: string;
   subtitlePath?: string;
   subtitleText?: string;
+  useAiSubtitle?: boolean;
   createdAt: string;
   completedAt?: string;
   error?: string;
@@ -73,7 +74,7 @@ const AdminBilibiliExtractor: React.FC = () => {
     
     setIsLoading(true);
     try {
-      const response = await fetch('/api/admin/bilibili/video-info', {
+      const response = await fetch('/admin/resources/bilibili/video-info', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ const AdminBilibiliExtractor: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/admin/bilibili/extract', {
+      const response = await fetch('/admin/resources/bilibili/extract', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,6 +130,7 @@ const AdminBilibiliExtractor: React.FC = () => {
           startTime,
           endTime,
           status: 'pending',
+          useAiSubtitle,
           createdAt: new Date().toISOString()
         };
         setJobs(prev => [newJob, ...prev]);
@@ -157,7 +159,7 @@ const AdminBilibiliExtractor: React.FC = () => {
   // 获取提取任务列表
   const fetchJobs = async () => {
     try {
-      const response = await fetch('/api/admin/bilibili/jobs', {
+      const response = await fetch('/admin/resources/bilibili/jobs', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
         }
@@ -177,7 +179,7 @@ const AdminBilibiliExtractor: React.FC = () => {
     if (!confirm('确定要删除这个任务吗？')) return;
 
     try {
-      const response = await fetch(`/api/admin/bilibili/jobs/${jobId}`, {
+      const response = await fetch(`/admin/resources/bilibili/jobs/${jobId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
@@ -193,6 +195,68 @@ const AdminBilibiliExtractor: React.FC = () => {
       console.error('删除任务时出错:', error);
       alert('删除失败');
     }
+  };
+
+  // 下载文件
+  const handleDownloadFile = async (jobId: string, fileType: 'audio' | 'subtitle') => {
+    try {
+      const response = await fetch(`/admin/resources/bilibili/jobs/${jobId}/download/${fileType}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        }
+      });
+
+      if (response.ok) {
+        // 创建下载链接
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${fileType}_${jobId}.${fileType === 'audio' ? 'wav' : 'srt'}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('下载失败');
+      }
+    } catch (error) {
+      console.error('下载文件时出错:', error);
+      alert('下载失败');
+    }
+  };
+
+  // 重试任务
+  const handleRetryJob = async (jobId: string) => {
+    if (!confirm('确定要重新提取这个任务吗？')) return;
+
+    try {
+      const response = await fetch(`/admin/resources/bilibili/jobs/${jobId}/retry`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        }
+      });
+
+      if (response.ok) {
+        alert('任务已重新提交');
+        fetchJobs();
+      } else {
+        alert('重试失败');
+      }
+    } catch (error) {
+      console.error('重试任务时出错:', error);
+      alert('重试失败');
+    }
+  };
+
+  // 复制字幕内容
+  const handleCopySubtitle = (subtitleText: string) => {
+    navigator.clipboard.writeText(subtitleText).then(() => {
+      alert('字幕内容已复制到剪贴板');
+    }).catch(() => {
+      alert('复制失败');
+    });
   };
 
   // 获取状态颜色
@@ -485,12 +549,6 @@ const AdminBilibiliExtractor: React.FC = () => {
                               </div>
                               
                               <div className="flex items-center gap-2">
-                                {job.status === 'completed' && job.audioPath && (
-                                  <Button size="sm" variant="outline">
-                                    <Download className="h-4 w-4 mr-1" />
-                                    下载
-                                  </Button>
-                                )}
                                 <Button 
                                   size="sm" 
                                   variant="ghost" 
@@ -518,34 +576,157 @@ const AdminBilibiliExtractor: React.FC = () => {
                             )}
 
                             {job.status === 'completed' && (
-                              <div className="space-y-2">
-                                {job.audioPath && (
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Volume2 className="h-4 w-4 text-green-600" />
-                                    <span>音频文件已生成</span>
-                                  </div>
-                                )}
-                                {job.subtitlePath && (
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <FileText className="h-4 w-4 text-blue-600" />
-                                    <span>字幕文件已生成</span>
-                                  </div>
-                                )}
+                              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg space-y-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <CheckCircle className="h-5 w-5 text-green-600" />
+                                  <h5 className="font-medium text-green-800">提取完成</h5>
+                                  {job.completedAt && (
+                                    <span className="text-sm text-green-600 ml-auto">
+                                      完成时间: {new Date(job.completedAt).toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* 文件信息和下载 */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {job.audioPath && (
+                                    <Card className="border-green-200">
+                                      <CardContent className="p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <Volume2 className="h-5 w-5 text-green-600" />
+                                          <h6 className="font-medium">音频文件</h6>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="text-sm text-gray-600">
+                                            <p>格式: WAV</p>
+                                            <p>时长: {job.startTime} - {job.endTime}</p>
+                                          </div>
+                                          <div className="flex gap-2">
+                                            <Button 
+                                              size="sm" 
+                                              onClick={() => handleDownloadFile(job.id, 'audio')}
+                                              className="bg-green-600 hover:bg-green-700"
+                                            >
+                                              <Download className="h-4 w-4 mr-1" />
+                                              下载音频
+                                            </Button>
+                                            {/* 可以在这里添加音频预览播放器 */}
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  )}
+
+                                  {job.subtitlePath && (
+                                    <Card className="border-blue-200">
+                                      <CardContent className="p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <FileText className="h-5 w-5 text-blue-600" />
+                                          <h6 className="font-medium">字幕文件</h6>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="text-sm text-gray-600">
+                                            <p>格式: SRT</p>
+                                            <p>生成方式: {job.useAiSubtitle ? 'AI生成' : '原生字幕'}</p>
+                                          </div>
+                                          <div className="flex gap-2">
+                                            <Button 
+                                              size="sm" 
+                                              onClick={() => handleDownloadFile(job.id, 'subtitle')}
+                                              className="bg-blue-600 hover:bg-blue-700"
+                                            >
+                                              <Download className="h-4 w-4 mr-1" />
+                                              下载字幕
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  )}
+                                </div>
+
+                                {/* 字幕内容预览和编辑 */}
                                 {job.subtitleText && (
-                                  <details className="text-sm">
-                                    <summary className="cursor-pointer text-nihongo-indigo">查看字幕内容</summary>
-                                    <div className="mt-2 p-3 bg-gray-50 rounded text-gray-700 max-h-32 overflow-y-auto">
-                                      {job.subtitleText}
-                                    </div>
-                                  </details>
+                                  <Card className="border-gray-200">
+                                    <CardHeader className="pb-3">
+                                      <div className="flex items-center justify-between">
+                                        <CardTitle className="text-sm font-medium">字幕内容预览</CardTitle>
+                                        <div className="flex gap-2">
+                                          <Button 
+                                            size="sm" 
+                                            variant="outline"
+                                            onClick={() => handleCopySubtitle(job.subtitleText!)}
+                                          >
+                                            <Copy className="h-4 w-4 mr-1" />
+                                            复制
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                        <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                                          {job.subtitleText}
+                                        </pre>
+                                      </div>
+                                      <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+                                        <span>字符数: {job.subtitleText.length}</span>
+                                        <span>行数: {job.subtitleText.split('\n').length}</span>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
                                 )}
+
+                                {/* 提取信息总结 */}
+                                <div className="pt-3 border-t border-green-200">
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                      <span className="text-gray-500">视频链接:</span>
+                                      <div className="font-mono text-xs text-blue-600 truncate" title={job.videoUrl}>
+                                        {job.videoUrl.length > 30 ? `${job.videoUrl.substring(0, 30)}...` : job.videoUrl}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">时间段:</span>
+                                      <div className="font-medium">{job.startTime} - {job.endTime}</div>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">处理时长:</span>
+                                      <div className="font-medium">
+                                        {job.completedAt && job.createdAt ? 
+                                          `${Math.round((new Date(job.completedAt).getTime() - new Date(job.createdAt).getTime()) / 1000)}秒` 
+                                          : '未知'}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">任务ID:</span>
+                                      <div className="font-mono text-xs">{job.id.substring(0, 8)}...</div>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             )}
 
-                            {job.status === 'failed' && job.error && (
-                              <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <span>{job.error}</span>
+                            {job.status === 'failed' && (
+                              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <h5 className="font-medium text-red-800 mb-2">提取失败</h5>
+                                    <p className="text-sm text-red-700 mb-3">{job.error}</p>
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => handleRetryJob(job.id)}
+                                        className="border-red-300 text-red-700 hover:bg-red-50"
+                                      >
+                                        <RefreshCw className="h-4 w-4 mr-1" />
+                                        重新尝试
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>

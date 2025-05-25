@@ -147,6 +147,23 @@ class DatabaseBackupService
     }
 
     /**
+     * 生成指定表的备份SQL内容
+     */
+    protected function generateTablesBackupSQL($connection, array $tables): string
+    {
+        $driver = $connection->getDriverName();
+        $dbName = $connection->getDatabaseName();
+        
+        if ($driver === 'pgsql') {
+            return $this->generatePostgreSQLTablesBackup($connection, $dbName, $tables);
+        } elseif ($driver === 'mysql') {
+            return $this->generateMySQLTablesBackup($connection, $dbName, $tables);
+        } else {
+            throw new Exception("不支持的数据库类型: {$driver}");
+        }
+    }
+
+    /**
      * 生成PostgreSQL备份
      */
     protected function generatePostgreSQLBackup($connection, $dbName): string
@@ -205,6 +222,82 @@ class DatabaseBackupService
         
         if ($output === null) {
             throw new Exception('mysqldump命令执行失败');
+        }
+        
+        return $output;
+    }
+
+    /**
+     * 生成MySQL指定表备份
+     */
+    protected function generateMySQLTablesBackup($connection, $dbName, array $tables): string
+    {
+        $config = $connection->getConfig();
+        $host = $config['host'];
+        $port = $config['port'];
+        $username = $config['username'];
+        $password = $config['password'];
+        
+        // 转义表名
+        $escapedTables = array_map('escapeshellarg', $tables);
+        $tablesStr = implode(' ', $escapedTables);
+        
+        // 生成mysqldump命令，只备份指定的表
+        $command = sprintf(
+            'mysqldump -h %s -P %s -u %s -p%s --single-transaction --routines --triggers %s %s',
+            escapeshellarg($host),
+            escapeshellarg($port),
+            escapeshellarg($username),
+            escapeshellarg($password),
+            escapeshellarg($dbName),
+            $tablesStr
+        );
+        
+        // 执行命令并获取输出
+        $output = shell_exec($command);
+        
+        if ($output === null) {
+            throw new Exception('mysqldump命令执行失败');
+        }
+        
+        return $output;
+    }
+
+    /**
+     * 生成PostgreSQL指定表备份
+     */
+    protected function generatePostgreSQLTablesBackup($connection, $dbName, array $tables): string
+    {
+        $config = $connection->getConfig();
+        $host = $config['host'];
+        $port = $config['port'];
+        $username = $config['username'];
+        $password = $config['password'];
+        
+        // 设置PostgreSQL密码环境变量
+        putenv("PGPASSWORD={$password}");
+        
+        // 转义表名
+        $escapedTables = array_map('escapeshellarg', $tables);
+        $tablesStr = implode(' ', array_map(function($table) {
+            return "-t {$table}";
+        }, $escapedTables));
+        
+        // 生成pg_dump命令，只备份指定的表
+        $command = sprintf(
+            'pg_dump -h %s -p %s -U %s -d %s --no-password --verbose --clean --if-exists %s',
+            escapeshellarg($host),
+            escapeshellarg($port),
+            escapeshellarg($username),
+            escapeshellarg($dbName),
+            $tablesStr
+        );
+        
+        // 执行命令并获取输出
+        $output = shell_exec($command);
+        
+        if ($output === null) {
+            throw new Exception('pg_dump命令执行失败');
         }
         
         return $output;
@@ -446,6 +539,101 @@ class DatabaseBackupService
             return [
                 'success' => false,
                 'message' => '数据库恢复失败: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * 创建指定表的备份
+     */
+    public function backupTables(array $tables, string $description = null): array
+    {
+        $connection = DB::connection();
+        $dbName = $connection->getDatabaseName();
+        $driver = $connection->getDriverName();
+        $tablesCount = count($tables);
+        
+        // 生成备份文件名
+        $timestamp = now()->format('Y-m-d_H-i-s');
+        $tablesStr = implode('-', array_slice($tables, 0, 3)) . (count($tables) > 3 ? '-etc' : '');
+        $filename = "backup_tables_{$tablesStr}_{$timestamp}.sql";
+        $filepath = "{$this->backupPath}/{$filename}";
+        
+        // 创建数据库记录
+        $backupRecord = DatabaseBackup::create([
+            'filename' => $filename,
+            'filepath' => $filepath,
+            'description' => $description ?: "备份指定表: " . implode(', ', $tables),
+            'file_size' => 0,
+            'file_size_human' => '0 B',
+            'tables_count' => $tablesCount,
+            'database_name' => $dbName,
+            'database_driver' => $driver,
+            'status' => 'creating',
+            'backup_started_at' => now(),
+        ]);
+
+        try {
+            Log::info('开始创建指定表备份', [
+                'filename' => $filename,
+                'database' => $dbName,
+                'tables' => $tables,
+                'description' => $description
+            ]);
+
+            // 生成指定表的备份SQL
+            $sql = $this->generateTablesBackupSQL($connection, $tables);
+            
+            // 保存到文件
+            Storage::disk($this->disk)->put($filepath, $sql);
+            
+            // 获取文件大小
+            $fileSize = Storage::disk($this->disk)->size($filepath);
+            $fileSizeHuman = $this->formatBytes($fileSize);
+            
+            // 更新备份记录
+            $backupRecord->update([
+                'file_size' => $fileSize,
+                'file_size_human' => $fileSizeHuman,
+                'status' => 'completed',
+                'backup_completed_at' => now(),
+            ]);
+            
+            Log::info('指定表备份创建成功', [
+                'filename' => $filename,
+                'size' => $fileSizeHuman,
+                'tables' => $tables
+            ]);
+            
+            return [
+                'success' => true,
+                'message' => '指定表备份创建成功',
+                'data' => [
+                    'id' => $backupRecord->id,
+                    'filename' => $filename,
+                    'filepath' => $filepath,
+                    'description' => $backupRecord->description,
+                    'size' => $fileSize,
+                    'size_human' => $fileSizeHuman,
+                    'tables_count' => $tablesCount,
+                    'tables' => $tables,
+                    'database' => $dbName,
+                    'created_at' => $backupRecord->created_at->format('Y-m-d H:i:s'),
+                    'created_at_human' => $backupRecord->created_at_human,
+                ]
+            ];
+            
+        } catch (Exception $e) {
+            // 更新备份记录为失败状态
+            $backupRecord->update([
+                'status' => 'failed',
+            ]);
+            
+            Log::error('指定表备份创建失败: ' . $e->getMessage());
+            
+            return [
+                'success' => false,
+                'message' => '指定表备份创建失败: ' . $e->getMessage()
             ];
         }
     }
