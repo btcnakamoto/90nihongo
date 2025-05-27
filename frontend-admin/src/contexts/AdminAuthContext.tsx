@@ -95,21 +95,61 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   // 验证token有效性
   useEffect(() => {
     if (token && !admin) {
+      console.log('🔍 验证token有效性...');
+      setIsLoading(true);
+      
       // 如果有token但没有管理员信息，尝试获取
       adminAuthApi.getMe()
         .then(response => {
+          console.log('✅ Token验证成功:', response);
           if (response.success) {
             setAdmin(response.admin);
             localStorage.setItem("admin_info", JSON.stringify(response.admin));
+          } else {
+            console.warn('⚠️ Token验证响应异常:', response);
+            // 清除无效的token
+            setToken(null);
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_info");
           }
         })
         .catch(error => {
-          console.error('Failed to get admin info:', error);
-          // Token可能已过期，清除本地状态
-          setToken(null);
-          setAdmin(null);
-          localStorage.removeItem("admin_token");
-          localStorage.removeItem("admin_info");
+          console.error('❌ Token验证失败:', error);
+          
+          // 检查错误类型
+          if (error.response?.status === 401) {
+            console.log('🔒 Token已过期或无效，清除认证状态');
+            // Token过期或无效，清除本地状态
+            setToken(null);
+            setAdmin(null);
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_info");
+          } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+            console.warn('🌐 网络错误，保持当前认证状态');
+            // 网络错误，不清除认证状态，使用缓存的admin信息
+            const cachedAdmin = localStorage.getItem("admin_info");
+            if (cachedAdmin) {
+              try {
+                setAdmin(JSON.parse(cachedAdmin));
+                console.log('📦 使用缓存的管理员信息');
+              } catch (e) {
+                console.error('❌ 缓存的管理员信息格式错误:', e);
+                setToken(null);
+                localStorage.removeItem("admin_token");
+                localStorage.removeItem("admin_info");
+              }
+            }
+          } else {
+            console.error('❌ 其他错误，清除认证状态:', error);
+            // 其他错误，清除认证状态
+            setToken(null);
+            setAdmin(null);
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_info");
+          }
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
     }
   }, [token, admin]);

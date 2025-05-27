@@ -46,10 +46,13 @@ const SidebarSubItem = ({ icon: Icon, text, href, isActive }: { icon: React.Elem
 };
 
 const SidebarItem = ({ icon: Icon, text, href, isActive, count, subItems }: SidebarItemProps) => {
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, toggleMenu, isMenuExpanded } = useSidebar();
   const location = useLocation();
-  const [isExpanded, setIsExpanded] = useState(false);
   const hasSubItems = subItems && subItems.length > 0;
+  
+  // 使用菜单文本作为唯一标识符
+  const menuKey = text;
+  const isExpanded = isMenuExpanded(menuKey);
   
   // 检查子菜单项是否有激活状态
   const hasActiveSubItem = subItems?.some(item => location.pathname === item.href) || false;
@@ -58,9 +61,16 @@ const SidebarItem = ({ icon: Icon, text, href, isActive, count, subItems }: Side
   const handleClick = (e: React.MouseEvent) => {
     if (hasSubItems) {
       e.preventDefault();
-      setIsExpanded(!isExpanded);
+      toggleMenu(menuKey);
     }
   };
+
+  // 当子菜单项处于激活状态时，自动展开父菜单
+  React.useEffect(() => {
+    if (hasActiveSubItem && !isExpanded) {
+      toggleMenu(menuKey);
+    }
+  }, [hasActiveSubItem, isExpanded, menuKey, toggleMenu]);
 
   const content = (
     <>
@@ -193,8 +203,9 @@ interface AdminSidebarProps {
 
 const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
   const { admin, logout, logoutAll, isLoading } = useAdminAuth();
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, scrollPosition, setScrollPosition } = useSidebar();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const navRef = React.useRef<HTMLElement>(null);
 
   const handleLogout = async () => {
     if (window.confirm('确定要登出吗？')) {
@@ -207,6 +218,42 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
       await logoutAll();
     }
   };
+
+  // 恢复滚动位置
+  React.useEffect(() => {
+    if (navRef.current && scrollPosition > 0) {
+      navRef.current.scrollTop = scrollPosition;
+    }
+  }, [scrollPosition]);
+
+  // 清理定时器
+  React.useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 使用 useRef 来存储滚动位置，避免频繁的状态更新
+  const scrollPositionRef = React.useRef(scrollPosition);
+  const scrollTimeoutRef = React.useRef<NodeJS.Timeout>();
+
+  // 防抖保存滚动位置
+  const handleScroll = React.useCallback((e: React.UIEvent<HTMLElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    scrollPositionRef.current = scrollTop;
+    
+    // 清除之前的定时器
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // 设置新的定时器，在滚动停止后保存位置
+    scrollTimeoutRef.current = setTimeout(() => {
+      setScrollPosition(scrollTop);
+    }, 150); // 150ms 防抖延迟
+  }, [setScrollPosition]);
 
   return (
     <div className={cn(
@@ -241,11 +288,15 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
         </div>
 
         {/* 导航区域 - 可滚动 */}
-        <nav className={cn(
-          "nav-area flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400",
-          isCollapsed ? "space-y-2" : "space-y-6"
-        )} 
-        style={{ height: 'calc(100vh - 200px)' }}>
+        <nav 
+          ref={navRef}
+          className={cn(
+            "nav-area flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400",
+            isCollapsed ? "space-y-2" : "space-y-6"
+          )} 
+          style={{ height: 'calc(100vh - 200px)' }}
+          onScroll={handleScroll}
+        >
           {/* 主要功能 */}
           <SidebarSection title="主要功能">
             <SidebarItem 

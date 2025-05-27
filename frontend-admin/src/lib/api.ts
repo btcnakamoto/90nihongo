@@ -53,14 +53,27 @@ apiClient.interceptors.response.use(
   (error) => {
     console.error('❌ API Error:', error.response?.status, error.response?.data);
     
-    if (error.response?.status === 401) {
-      // Token过期或无效，清除本地存储并跳转到登录页
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_info');
+    // 检查是否是网络错误
+    if (!error.response) {
+      console.warn('🌐 网络连接错误，请检查后端服务器是否运行');
+      error.code = 'NETWORK_ERROR';
+    } else if (error.response?.status === 401) {
+      console.log('🔒 收到401错误，token可能已过期');
       
-      // 避免在登录页面重复跳转
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      // 只有在特定API端点收到401时才自动跳转
+      const isAuthEndpoint = error.config?.url?.includes('/admin/me') || 
+                            error.config?.url?.includes('/admin/login');
+      
+      if (isAuthEndpoint) {
+        // Token过期或无效，清除本地存储并跳转到登录页
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_info');
+        
+        // 避免在登录页面重复跳转
+        if (!window.location.pathname.includes('/login')) {
+          console.log('🔄 跳转到登录页面');
+          window.location.href = '/login';
+        }
       }
     }
     

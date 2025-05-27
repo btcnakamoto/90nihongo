@@ -15,13 +15,27 @@ import AdminSubscriptionManagement from "./pages/AdminSubscriptionManagement";
 import AdminResourceManager from "./pages/AdminResourceManager";import ResourceOverview from "./pages/ResourceOverview";import AdminWebScraping from "./pages/AdminWebScraping";import AdminFileUpload from "./pages/AdminFileUpload";import AdminAPIImport from "./pages/AdminAPIImport";import AdminBilibiliExtractor from "./pages/AdminBilibiliExtractor";import AdminTaskManagement from "./pages/AdminTaskManagement";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import AuthDebug from "./pages/AuthDebug";
 import { AdminAuthProvider, useAdminAuth } from "./contexts/AdminAuthContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { isAuthenticated } = useAdminAuth();
+  const { isAuthenticated, isLoading } = useAdminAuth();
+  
+  // 显示加载状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nihongo-blue mx-auto mb-4"></div>
+          <p className="text-gray-600">验证登录状态...</p>
+        </div>
+      </div>
+    );
+  }
+  
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -39,6 +53,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/auth-debug" element={<AuthDebug />} />
               <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute><AdminUserManagement /></ProtectedRoute>} />
               <Route path="/admin/subscriptions" element={<ProtectedRoute><AdminSubscriptionManagement /></ProtectedRoute>} />

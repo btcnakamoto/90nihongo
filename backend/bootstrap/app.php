@@ -29,5 +29,22 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // 处理未认证异常，对API请求返回JSON响应
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            // 对于API请求，始终返回JSON响应
+            if ($request->expectsJson() || 
+                $request->is('admin/*') || 
+                $request->is('api/*') ||
+                $request->wantsJson() ||
+                str_contains($request->header('Accept', ''), 'application/json')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated',
+                    'error' => 'Authentication required'
+                ], 401);
+            }
+            
+            // 对于web请求，重定向到前端登录页面
+            return redirect('http://localhost:8081/login');
+        });
     })->create();
