@@ -128,7 +128,8 @@ const AdminDatabaseBackup = () => {
   const [tableBackupDescription, setTableBackupDescription] = useState("");
   const [dataSource, setDataSource] = useState<'api' | 'mock'>('api');
 
-  const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+  // 在开发环境中使用空字符串以利用Vite代理，生产环境使用完整URL
+  const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "" : "http://127.0.0.1:8000");
 
   // 获取数据库状态
   const fetchDatabaseStatus = async () => {
