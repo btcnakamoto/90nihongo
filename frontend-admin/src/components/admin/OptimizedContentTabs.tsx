@@ -1,4 +1,7 @@
-import { memo, useMemo, useCallback, useState } from 'react';import { Link } from 'react-router-dom';import { TabsContent } from '@/components/ui/tabs';import BatchImportDialog from './BatchImportDialog';
+import { memo, useMemo, useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { TabsContent } from '@/components/ui/tabs';
+import BatchImportDialog from './BatchImportDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -21,8 +24,63 @@ import {
   Eye,
   Star,
   BarChart3,
-  Award
+  Award,
+  Tag as TagIcon,
+  Folder
 } from 'lucide-react';
+
+// 新增分类标签显示组件
+const CategoryBadge = memo(({ category }: { category: any }) => (
+  <Badge variant="outline" className="flex items-center gap-1">
+    <Folder className="h-3 w-3" />
+    {category.name}
+  </Badge>
+));
+
+const TagBadge = memo(({ tag }: { tag: any }) => (
+  <Badge variant="secondary" className="flex items-center gap-1">
+    <TagIcon className="h-3 w-3" />
+    {tag.name}
+  </Badge>
+));
+
+const ContentLengthBadge = memo(({ length }: { length: string }) => {
+  const badgeConfig = useMemo(() => {
+    const configs = {
+      '短句': { className: 'bg-blue-100 text-blue-800' },
+      '中句': { className: 'bg-green-100 text-green-800' },
+      '长句': { className: 'bg-orange-100 text-orange-800' },
+      '短文': { className: 'bg-purple-100 text-purple-800' },
+      '长文': { className: 'bg-red-100 text-red-800' }
+    };
+    return configs[length as keyof typeof configs] || { className: 'bg-gray-100 text-gray-800' };
+  }, [length]);
+
+  return (
+    <Badge className={badgeConfig.className}>
+      {length}
+    </Badge>
+  );
+});
+
+const DialoguePreview = memo(({ dialogue }: { dialogue: any }) => {
+  if (!dialogue) return null;
+  
+  return (
+    <div className="text-sm text-gray-600 space-y-1">
+      <div className="font-medium">对话内容预览:</div>
+      {dialogue.lines?.slice(0, 2).map((line: any, index: number) => (
+        <div key={index} className="flex gap-2">
+          <span className="font-semibold">{line.speaker}:</span>
+          <span className="truncate">{line.japanese_text}</span>
+        </div>
+      ))}
+      {dialogue.lines?.length > 2 && (
+        <div className="text-xs text-gray-400">...还有 {dialogue.lines.length - 2} 行对话</div>
+      )}
+    </div>
+  );
+});
 
 // 优化的徽章组件
 const DifficultyBadge = memo(({ difficulty }: { difficulty: string }) => {
@@ -102,16 +160,22 @@ const TypeBadge = memo(({ type }: { type: string }) => {
   );
 });
 
-// 分页器组件
+// 增强版分页器组件
 const PaginationControls = memo(({ 
   currentPage, 
   totalPages, 
+  totalItems = 0,
+  pageSize = 20,
   onPageChange 
 }: {
   currentPage: number;
   totalPages: number;
+  totalItems?: number;
+  pageSize?: number;
   onPageChange: (page: number) => void;
 }) => {
+  const [jumpPage, setJumpPage] = useState("");
+
   const handlePrevious = useCallback(() => {
     if (currentPage > 1) {
       onPageChange(currentPage - 1);
@@ -124,30 +188,266 @@ const PaginationControls = memo(({
     }
   }, [currentPage, totalPages, onPageChange]);
 
+  const handleFirst = useCallback(() => {
+    onPageChange(1);
+  }, [onPageChange]);
+
+  const handleLast = useCallback(() => {
+    onPageChange(totalPages);
+  }, [totalPages, onPageChange]);
+
+  const handleJump = useCallback(() => {
+    const page = parseInt(jumpPage);
+    if (page >= 1 && page <= totalPages) {
+      onPageChange(page);
+      setJumpPage("");
+    }
+  }, [jumpPage, totalPages, onPageChange]);
+
+  const handleJumpKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleJump();
+    }
+  }, [handleJump]);
+
+  // 生成显示的页码数组
+  const getDisplayPages = useCallback(() => {
+    const delta = 2; // 当前页两边显示的页数
+    const range = [];
+    const rangeWithDots = [];
+
+    // 计算显示范围
+    const start = Math.max(1, currentPage - delta);
+    const end = Math.min(totalPages, currentPage + delta);
+
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+
+    // 添加首页
+    if (start > 1) {
+      rangeWithDots.push(1);
+      if (start > 2) {
+        rangeWithDots.push('...');
+      }
+    }
+
+    // 添加中间页码
+    rangeWithDots.push(...range);
+
+    // 添加末页
+    if (end < totalPages) {
+      if (end < totalPages - 1) {
+        rangeWithDots.push('...');
+      }
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots;
+  }, [currentPage, totalPages]);
+
+  const displayPages = getDisplayPages();
+
+  // 计算当前显示的记录范围
+  const startRecord = (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalItems);
+
+  // 总是显示分页信息，即使只有一页
   return (
-    <div className="flex items-center justify-between px-2">
-      <div className="flex-1 text-sm text-muted-foreground">
-        第 {currentPage} 页，共 {totalPages} 页
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-3 border-t bg-gray-50/50">
+      {/* 记录信息 */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>显示第 {startRecord}-{endRecord} 条</span>
+        <span>共 {totalItems} 条记录</span>
+        <span>第 {currentPage}/{Math.max(1, totalPages)} 页</span>
       </div>
-      <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePrevious}
-          disabled={currentPage <= 1}
-        >
-          上一页
-        </Button>
-        <Button
-          variant="outline" 
-          size="sm"
-          onClick={handleNext}
-          disabled={currentPage >= totalPages}
-        >
-          下一页
-        </Button>
-      </div>
+
+      {/* 分页控件 - 只在有多页时显示 */}
+      {totalPages > 1 && (
+        <div className="flex items-center gap-2">
+          {/* 首页和上一页 */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleFirst}
+            disabled={currentPage <= 1}
+            className="hidden sm:inline-flex"
+          >
+            首页
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrevious}
+            disabled={currentPage <= 1}
+          >
+            上一页
+          </Button>
+
+          {/* 页码按钮 */}
+          <div className="hidden md:flex items-center gap-1">
+            {displayPages.map((page, index) => 
+              typeof page === 'number' ? (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onPageChange(page)}
+                  className="min-w-[2.5rem]"
+                >
+                  {page}
+                </Button>
+              ) : (
+                <span key={index} className="px-2 text-muted-foreground">
+                  {page}
+                </span>
+              )
+            )}
+          </div>
+
+          {/* 下一页和末页 */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNext}
+            disabled={currentPage >= totalPages}
+          >
+            下一页
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLast}
+            disabled={currentPage >= totalPages}
+            className="hidden sm:inline-flex"
+          >
+            末页
+          </Button>
+
+          {/* 快速跳转 */}
+          <div className="hidden lg:flex items-center gap-2 ml-4">
+            <span className="text-sm text-muted-foreground">跳转到</span>
+            <Input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyPress={handleJumpKeyPress}
+              className="w-16 h-8 text-center"
+              placeholder="页"
+            />
+            <Button size="sm" onClick={handleJump} disabled={!jumpPage}>
+              跳转
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
+  );
+});
+
+// 更新的学习材料表格行
+const MaterialTableRow = memo(({ 
+  material, 
+  onEdit, 
+  onDelete, 
+  onView 
+}: { 
+  material: any;
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+  onView: (id: number) => void;
+}) => {
+  const handleEdit = useCallback(() => onEdit(material.id), [onEdit, material.id]);
+  const handleDelete = useCallback(() => onDelete(material.id), [onDelete, material.id]);
+  const handleView = useCallback(() => onView(material.id), [onView, material.id]);
+
+  return (
+    <TableRow>
+      <TableCell>
+        <Checkbox />
+      </TableCell>
+      <TableCell className="font-medium">
+        <div className="space-y-2">
+          <div>
+            <p className="font-medium">{material.title}</p>
+            <p className="text-sm text-gray-500">
+              {material.source_type === 'json_import' && material.source_id && (
+                <span className="text-blue-600">ID: {material.source_id}</span>
+              )}
+            </p>
+          </div>
+          
+          {/* 分类显示 */}
+          {material.categories && material.categories.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {material.categories.map((category: any) => (
+                <CategoryBadge key={category.id} category={category} />
+              ))}
+            </div>
+          )}
+          
+          {/* 标签显示 */}
+          {material.tags && material.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {material.tags.slice(0, 3).map((tag: any) => (
+                <TagBadge key={tag.id} tag={tag} />
+              ))}
+              {material.tags.length > 3 && (
+                <Badge variant="outline">+{material.tags.length - 3}</Badge>
+              )}
+            </div>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex gap-2">
+          <TypeBadge type={material.type} />
+          {material.content_length && (
+            <ContentLengthBadge length={material.content_length} />
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="space-y-2">
+          {material.content_style && (
+            <Badge variant="outline">{material.content_style}</Badge>
+          )}
+          <p className="text-sm text-gray-500 line-clamp-2">{material.content}</p>
+          
+          {/* 对话内容预览 */}
+          <DialoguePreview dialogue={material.dialogue} />
+        </div>
+      </TableCell>
+      <TableCell>
+        {material.media_url && (
+          <Badge variant="outline" className="text-green-600">
+            <Volume2 className="h-3 w-3 mr-1" />
+            有音频
+          </Badge>
+        )}
+        {material.dialogue?.lines?.some((line: any) => line.audio_url) && (
+          <Badge variant="outline" className="text-blue-600">
+            <Volume2 className="h-3 w-3 mr-1" />
+            分段音频
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={handleView}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleEdit}>
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleDelete}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 });
 
@@ -200,18 +500,10 @@ const CourseTableRow = memo(({
         </div>
       </TableCell>
       <TableCell>
-        <div className="flex items-center gap-1">
-          <Star className="h-4 w-4 text-yellow-500" />
-          <span>{course.user_feedback}</span>
-        </div>
-      </TableCell>
-      <TableCell>
         <div className="flex items-center gap-2">
-          <Link to={`/admin/content/courses/${course.id}`}>
-            <Button variant="ghost" size="sm">
-              <Eye className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="sm" onClick={handleView}>
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="sm" onClick={handleEdit}>
             <Edit className="h-4 w-4" />
           </Button>
@@ -266,64 +558,23 @@ export const OptimizedCoursesTab = memo(({
             90天课程管理
           </CardTitle>
           <CardDescription>
-            管理90天学习路径中每天的课程内容（共 {filteredCourses.length} 个课程）
+            管理每日课程安排，追踪学习进度和完成情况（共 {filteredCourses.length} 天课程）
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* 搜索和筛选 */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="搜索课程标题..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="published">已发布</SelectItem>
-                  <SelectItem value="draft">草稿</SelectItem>
-                  <SelectItem value="review">审核中</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterLevel} onValueChange={setFilterLevel}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="难度" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部难度</SelectItem>
-                  <SelectItem value="beginner">初级</SelectItem>
-                  <SelectItem value="intermediate">中级</SelectItem>
-                  <SelectItem value="advanced">高级</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={() => handleCreateContent('course')} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              添加课程
-            </Button>
-          </div>
-
+          {/* 课程表格 */}
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
                   <Checkbox />
                 </TableHead>
-                <TableHead>天数</TableHead>
+                <TableHead>课程日期</TableHead>
                 <TableHead>课程标题</TableHead>
-                <TableHead>难度</TableHead>
+                <TableHead>难度等级</TableHead>
                 <TableHead>状态</TableHead>
-                <TableHead>材料数</TableHead>
+                <TableHead>关联材料</TableHead>
                 <TableHead>完成率</TableHead>
-                <TableHead>评分</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
@@ -342,9 +593,11 @@ export const OptimizedCoursesTab = memo(({
 
           {totalPages > 1 && (
             <div className="mt-4">
-              <PaginationControls 
+              <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalPages}
+                totalItems={filteredCourses.length}
+                pageSize={pageSize}
                 onPageChange={setCurrentPage}
               />
             </div>
@@ -357,176 +610,162 @@ export const OptimizedCoursesTab = memo(({
 
 OptimizedCoursesTab.displayName = 'OptimizedCoursesTab';
 
-// 优化的学习材料标签页
+// 更新的学习材料标签页组件
 export const OptimizedMaterialsTab = memo(({
   materials,
   searchTerm,
   setSearchTerm,
   filterType,
   setFilterType,
+  filterCategory, // 新增分类筛选
+  setFilterCategory,
+  filterTag, // 新增标签筛选
+  setFilterTag,
+  categories, // 新增分类数据
+  tags, // 新增标签数据
   currentPage,
   setCurrentPage,
   pageSize,
+  totalPages, // 新增总页数
+  totalItems, // 新增总条数
   handleCreateContent,
   handleEdit,
   handleDelete,
   handleView
-}: any) => {
+}: {
+  materials: any[];
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  filterType: string;
+  setFilterType: (type: string) => void;
+  filterCategory?: string;
+  setFilterCategory?: (category: string) => void;
+  filterTag?: string;
+  setFilterTag?: (tag: string) => void;
+  categories?: any[];
+  tags?: any[];
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  pageSize: number;
+  totalPages?: number; // 新增
+  totalItems?: number; // 新增
+  handleCreateContent: () => void;
+  handleEdit: (id: number) => void;
+  handleDelete: (id: number) => void;
+  handleView: (id: number) => void;
+}) => {
+  // 当使用外部分页数据时，不再在组件内部进行筛选和分页
+  const shouldUseExternalPagination = totalPages !== undefined && totalItems !== undefined;
+  
+  // 筛选逻辑 - 仅在没有外部分页数据时使用
   const filteredMaterials = useMemo(() => {
-    return materials.filter((material: any) => {
-      const matchesSearch = searchTerm === "" || material.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = filterType === "all" || material.type === filterType;
-      return matchesSearch && matchesType;
+    if (shouldUseExternalPagination) {
+      return materials; // 直接使用传入的材料数据，不再进行客户端筛选
+    }
+    
+    return materials.filter(material => {
+      const matchesSearch = !searchTerm || 
+        material.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        material.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        material.source_id?.toString().includes(searchTerm);
+      
+      const matchesType = filterType === 'all' || material.type === filterType;
+      
+      const matchesCategory = !filterCategory || filterCategory === 'all' || 
+        material.categories?.some((cat: any) => cat.id.toString() === filterCategory);
+      
+      const matchesTag = !filterTag || filterTag === 'all' || 
+        material.tags?.some((tag: any) => tag.id.toString() === filterTag);
+      
+      return matchesSearch && matchesType && matchesCategory && matchesTag;
     });
-  }, [materials, searchTerm, filterType]);
+  }, [materials, searchTerm, filterType, filterCategory, filterTag, shouldUseExternalPagination]);
 
+  // 分页逻辑 - 仅在没有外部分页数据时使用
+  const calculatedTotalPages = shouldUseExternalPagination ? totalPages : Math.ceil(filteredMaterials.length / pageSize);
+  const calculatedTotalItems = shouldUseExternalPagination ? totalItems : filteredMaterials.length;
+  
   const paginatedMaterials = useMemo(() => {
+    if (shouldUseExternalPagination) {
+      return materials; // 直接使用传入的材料数据
+    }
+    
     const startIndex = (currentPage - 1) * pageSize;
     return filteredMaterials.slice(startIndex, startIndex + pageSize);
-  }, [filteredMaterials, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredMaterials.length / pageSize);
-
-  // 格式化时长
-  const formatDuration = useCallback((minutes: number) => {
-    if (minutes < 60) return `${minutes}分钟`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}时${mins}分`;
-  }, []);
-
-  // 材料表格行组件
-  const MaterialTableRow = memo(({ 
-    material, 
-    onEdit, 
-    onDelete, 
-    onView 
-  }: { 
-    material: any;
-    onEdit: (id: number) => void;
-    onDelete: (id: number) => void;
-    onView: (id: number) => void;
-  }) => {
-    const handleEdit = useCallback(() => onEdit(material.id), [onEdit, material.id]);
-    const handleDelete = useCallback(() => onDelete(material.id), [onDelete, material.id]);
-    const handleView = useCallback(() => onView(material.id), [onView, material.id]);
-
-    return (
-      <TableRow>
-        <TableCell>
-          <Checkbox />
-        </TableCell>
-        <TableCell className="font-medium">{material.title}</TableCell>
-        <TableCell>
-          <TypeBadge type={material.type} />
-        </TableCell>
-        <TableCell>第{material.course_day || 1}天</TableCell>
-        <TableCell>{formatDuration(material.duration_minutes || 0)}</TableCell>
-        <TableCell>{material.file_size || '未知'}</TableCell>
-        <TableCell>{material.views || 0}</TableCell>
-        <TableCell>
-          <div className="flex items-center gap-1">
-            <Star className="h-4 w-4 text-yellow-400" />
-            <span>{material.rating || 0}</span>
-          </div>
-        </TableCell>
-        <TableCell>{material.created_at || '未知'}</TableCell>
-        <TableCell>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleView}>
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleEdit}>
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-red-600" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
-    );
-  });
+  }, [filteredMaterials, currentPage, pageSize, shouldUseExternalPagination, materials]);
 
   return (
     <TabsContent value="materials" className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            学习材料库
-          </CardTitle>
+          <CardTitle>学习材料管理</CardTitle>
           <CardDescription>
-            管理视频、音频、文本和测验等各类学习资源（共 {filteredMaterials.length} 个材料）
+            管理所有学习材料，包括视频、音频、文本和对话内容
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* 材料库统计卡片 */}
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
-            <Card>
-              <CardContent className="flex items-center p-6">
-                <Video className="h-8 w-8 text-blue-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">视频材料</p>
-                  <p className="text-2xl font-bold">{materials.filter((m: any) => m.type === 'video').length}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center p-6">
-                <Volume2 className="h-8 w-8 text-green-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">音频材料</p>
-                  <p className="text-2xl font-bold">{materials.filter((m: any) => m.type === 'audio').length}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center p-6">
-                <FileText className="h-8 w-8 text-orange-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">文本材料</p>
-                  <p className="text-2xl font-bold">{materials.filter((m: any) => m.type === 'text').length}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center p-6">
-                <Brain className="h-8 w-8 text-purple-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">测验材料</p>
-                  <p className="text-2xl font-bold">{materials.filter((m: any) => m.type === 'quiz').length}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* 搜索和筛选 */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="搜索学习材料..."
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="搜索材料标题、内容或源ID..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-8"
                 />
               </div>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="类型" />
+            </div>
+            
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="类型" />
+              </SelectTrigger>
+              <SelectContent side="bottom" align="start" sideOffset={4}>
+                <SelectItem value="all">所有类型</SelectItem>
+                <SelectItem value="text">文本</SelectItem>
+                <SelectItem value="video">视频</SelectItem>
+                <SelectItem value="audio">音频</SelectItem>
+                <SelectItem value="quiz">测验</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* 分类筛选 */}
+            {categories && setFilterCategory && (
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="分类" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部类型</SelectItem>
-                  <SelectItem value="video">视频</SelectItem>
-                  <SelectItem value="audio">音频</SelectItem>
-                  <SelectItem value="text">文本</SelectItem>
-                  <SelectItem value="quiz">测验</SelectItem>
+                <SelectContent side="bottom" align="start" sideOffset={4}>
+                  <SelectItem value="all">所有分类</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-            <Button onClick={() => handleCreateContent('material')} className="bg-green-600 hover:bg-green-700">
+            )}
+
+            {/* 标签筛选 */}
+            {tags && setFilterTag && (
+              <Select value={filterTag} onValueChange={setFilterTag}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="标签" />
+                </SelectTrigger>
+                <SelectContent side="bottom" align="start" sideOffset={4}>
+                  <SelectItem value="all">所有标签</SelectItem>
+                  {tags.slice(0, 20).map((tag) => (
+                    <SelectItem key={tag.id} value={tag.id.toString()}>
+                      {tag.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Button onClick={handleCreateContent}>
               <Plus className="h-4 w-4 mr-2" />
               添加材料
             </Button>
@@ -539,19 +778,15 @@ export const OptimizedMaterialsTab = memo(({
                 <TableHead className="w-12">
                   <Checkbox />
                 </TableHead>
-                <TableHead>材料标题</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>所属课程</TableHead>
-                <TableHead>时长</TableHead>
-                <TableHead>文件大小</TableHead>
-                <TableHead>观看/下载</TableHead>
-                <TableHead>评分</TableHead>
-                <TableHead>创建时间</TableHead>
-                <TableHead>操作</TableHead>
+                <TableHead>标题与分类</TableHead>
+                <TableHead>类型/长度</TableHead>
+                <TableHead>内容预览</TableHead>
+                <TableHead>媒体文件</TableHead>
+                <TableHead className="w-32">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedMaterials.map((material: any) => (
+              {paginatedMaterials.map(material => (
                 <MaterialTableRow
                   key={material.id}
                   material={material}
@@ -563,19 +798,20 @@ export const OptimizedMaterialsTab = memo(({
             </TableBody>
           </Table>
 
-          {totalPages > 1 && (
-            <div className="mt-4">
-              <PaginationControls 
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          )}
+          {/* 分页控制 */}
+          <div className="mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={calculatedTotalPages}
+              totalItems={calculatedTotalItems}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </CardContent>
       </Card>
     </TabsContent>
   );
 });
 
-OptimizedMaterialsTab.displayName = 'OptimizedMaterialsTab';// 优化的词汇管理标签页export const OptimizedVocabularyTab = memo(({  vocabulary,  searchTerm,  setSearchTerm,  filterLevel,  setFilterLevel,  currentPage,  setCurrentPage,  pageSize,  handleCreateContent,  handleEdit,  handleDelete,  handleView}: any) => {  const filteredVocabulary = useMemo(() => {    return vocabulary.filter((word: any) => {      const matchesSearch = searchTerm === "" ||         word.word.toLowerCase().includes(searchTerm.toLowerCase()) ||        word.reading.toLowerCase().includes(searchTerm.toLowerCase()) ||        word.meaning.toLowerCase().includes(searchTerm.toLowerCase());      const matchesLevel = filterLevel === "all" || word.jlpt_level === filterLevel;      return matchesSearch && matchesLevel;    });  }, [vocabulary, searchTerm, filterLevel]);  const paginatedVocabulary = useMemo(() => {    const startIndex = (currentPage - 1) * pageSize;    return filteredVocabulary.slice(startIndex, startIndex + pageSize);  }, [filteredVocabulary, currentPage, pageSize]);  const totalPages = Math.ceil(filteredVocabulary.length / pageSize);  // JLPT等级徽章  const JLPTBadge = memo(({ level }: { level: string }) => {    const levelConfig = useMemo(() => {      const configs = {        N5: { className: 'bg-green-100 text-green-800', label: 'N5' },        N4: { className: 'bg-blue-100 text-blue-800', label: 'N4' },        N3: { className: 'bg-yellow-100 text-yellow-800', label: 'N3' },        N2: { className: 'bg-orange-100 text-orange-800', label: 'N2' },        N1: { className: 'bg-red-100 text-red-800', label: 'N1' }      };      return configs[level as keyof typeof configs] || { className: 'bg-gray-100 text-gray-800', label: level };    }, [level]);    return (      <Badge className={levelConfig.className}>        {levelConfig.label}      </Badge>    );  });  // 词汇表格行组件  const VocabularyTableRow = memo(({     word,     onEdit,     onDelete,     onView   }: {     word: any;    onEdit: (id: number) => void;    onDelete: (id: number) => void;    onView: (id: number) => void;  }) => {    const handleEdit = useCallback(() => onEdit(word.id), [onEdit, word.id]);    const handleDelete = useCallback(() => onDelete(word.id), [onDelete, word.id]);    const handleView = useCallback(() => onView(word.id), [onView, word.id]);    return (      <TableRow>        <TableCell>          <Checkbox />        </TableCell>        <TableCell className="font-medium">{word.word}</TableCell>        <TableCell className="text-blue-600">{word.reading}</TableCell>        <TableCell>{word.meaning}</TableCell>        <TableCell>          <Badge variant="outline">{word.part_of_speech}</Badge>        </TableCell>        <TableCell>          <JLPTBadge level={word.jlpt_level} />        </TableCell>        <TableCell className="max-w-xs truncate">{word.example_sentence || '暂无'}</TableCell>        <TableCell>{word.created_at || '未知'}</TableCell>        <TableCell>          <div className="flex items-center gap-2">            <Button variant="ghost" size="sm" onClick={handleView}>              <Eye className="h-4 w-4" />            </Button>            <Button variant="ghost" size="sm" onClick={handleEdit}>              <Edit className="h-4 w-4" />            </Button>            <Button variant="ghost" size="sm" className="text-red-600" onClick={handleDelete}>              <Trash2 className="h-4 w-4" />            </Button>          </div>        </TableCell>      </TableRow>    );  });  return (    <TabsContent value="vocabulary" className="space-y-6">      <Card>        <CardHeader>          <CardTitle className="flex items-center gap-2">            <Target className="h-5 w-5" />            词汇管理          </CardTitle>          <CardDescription>            管理日语单词、读音、释义和例句等词汇信息（共 {filteredVocabulary.length} 个词汇）          </CardDescription>        </CardHeader>        <CardContent>          {/* 词汇统计卡片 */}          <div className="grid gap-4 md:grid-cols-5 mb-6">            <Card>              <CardContent className="flex items-center p-6">                <Award className="h-8 w-8 text-green-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">N5词汇</p>                  <p className="text-2xl font-bold">{vocabulary.filter((v: any) => v.jlpt_level === 'N5').length}</p>                </div>              </CardContent>            </Card>            <Card>              <CardContent className="flex items-center p-6">                <Award className="h-8 w-8 text-blue-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">N4词汇</p>                  <p className="text-2xl font-bold">{vocabulary.filter((v: any) => v.jlpt_level === 'N4').length}</p>                </div>              </CardContent>            </Card>            <Card>              <CardContent className="flex items-center p-6">                <Award className="h-8 w-8 text-yellow-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">N3词汇</p>                  <p className="text-2xl font-bold">{vocabulary.filter((v: any) => v.jlpt_level === 'N3').length}</p>                </div>              </CardContent>            </Card>            <Card>              <CardContent className="flex items-center p-6">                <Award className="h-8 w-8 text-orange-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">N2词汇</p>                  <p className="text-2xl font-bold">{vocabulary.filter((v: any) => v.jlpt_level === 'N2').length}</p>                </div>              </CardContent>            </Card>            <Card>              <CardContent className="flex items-center p-6">                <Award className="h-8 w-8 text-red-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">N1词汇</p>                  <p className="text-2xl font-bold">{vocabulary.filter((v: any) => v.jlpt_level === 'N1').length}</p>                </div>              </CardContent>            </Card>          </div>          {/* 搜索和筛选 */}          <div className="flex items-center justify-between mb-6">            <div className="flex items-center gap-4">              <div className="relative">                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />                <Input                  placeholder="搜索词汇、读音或释义..."                  value={searchTerm}                  onChange={(e) => setSearchTerm(e.target.value)}                  className="pl-10 w-64"                />              </div>              <Select value={filterLevel} onValueChange={setFilterLevel}>                <SelectTrigger className="w-32">                  <SelectValue placeholder="JLPT等级" />                </SelectTrigger>                <SelectContent>                  <SelectItem value="all">全部等级</SelectItem>                  <SelectItem value="N5">N5</SelectItem>                  <SelectItem value="N4">N4</SelectItem>                  <SelectItem value="N3">N3</SelectItem>                  <SelectItem value="N2">N2</SelectItem>                  <SelectItem value="N1">N1</SelectItem>                </SelectContent>              </Select>            </div>            <Button onClick={() => handleCreateContent('vocabulary')} className="bg-purple-600 hover:bg-purple-700">              <Plus className="h-4 w-4 mr-2" />              添加词汇            </Button>          </div>          {/* 词汇表格 */}          <Table>            <TableHeader>              <TableRow>                <TableHead className="w-12">                  <Checkbox />                </TableHead>                <TableHead>词汇</TableHead>                <TableHead>读音</TableHead>                <TableHead>释义</TableHead>                <TableHead>词性</TableHead>                <TableHead>JLPT等级</TableHead>                <TableHead>例句</TableHead>                <TableHead>创建时间</TableHead>                <TableHead>操作</TableHead>              </TableRow>            </TableHeader>            <TableBody>              {paginatedVocabulary.map((word: any) => (                <VocabularyTableRow                  key={word.id}                  word={word}                  onEdit={handleEdit}                  onDelete={handleDelete}                  onView={handleView}                />              ))}            </TableBody>          </Table>          {totalPages > 1 && (            <div className="mt-4">              <PaginationControls                 currentPage={currentPage}                totalPages={totalPages}                onPageChange={setCurrentPage}              />            </div>          )}        </CardContent>      </Card>    </TabsContent>  );});OptimizedVocabularyTab.displayName = 'OptimizedVocabularyTab';// 优化的练习题库标签页export const OptimizedExercisesTab = memo(({  exercises,  searchTerm,  setSearchTerm,  filterType,  setFilterType,  filterLevel,  setFilterLevel,  currentPage,  setCurrentPage,  pageSize,  handleCreateContent,  handleEdit,  handleDelete,  handleView}: any) => {  const filteredExercises = useMemo(() => {    return exercises.filter((exercise: any) => {      const matchesSearch = searchTerm === "" ||         exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) ||        exercise.question.toLowerCase().includes(searchTerm.toLowerCase());      const matchesType = filterType === "all" || exercise.type === filterType;      const matchesLevel = filterLevel === "all" || exercise.difficulty === filterLevel;      return matchesSearch && matchesType && matchesLevel;    });  }, [exercises, searchTerm, filterType, filterLevel]);  const paginatedExercises = useMemo(() => {    const startIndex = (currentPage - 1) * pageSize;    return filteredExercises.slice(startIndex, startIndex + pageSize);  }, [filteredExercises, currentPage, pageSize]);  const totalPages = Math.ceil(filteredExercises.length / pageSize);  // 练习题表格行组件  const ExerciseTableRow = memo(({     exercise,     onEdit,     onDelete,     onView   }: {     exercise: any;    onEdit: (id: number) => void;    onDelete: (id: number) => void;    onView: (id: number) => void;  }) => {    const handleEdit = useCallback(() => onEdit(exercise.id), [onEdit, exercise.id]);    const handleDelete = useCallback(() => onDelete(exercise.id), [onDelete, exercise.id]);    const handleView = useCallback(() => onView(exercise.id), [onView, exercise.id]);    return (      <TableRow>        <TableCell>          <Checkbox />        </TableCell>        <TableCell className="font-medium">{exercise.title}</TableCell>        <TableCell>          <TypeBadge type={exercise.type} />        </TableCell>        <TableCell>第{exercise.course_day || 1}天</TableCell>        <TableCell>          <DifficultyBadge difficulty={exercise.difficulty || 'easy'} />        </TableCell>        <TableCell>          <div className="flex items-center gap-1">            <Target className="h-4 w-4 text-blue-500" />            <span>{exercise.points || 10}</span>          </div>        </TableCell>        <TableCell>{exercise.completion_count || 0}</TableCell>        <TableCell>          <div className="flex items-center gap-1">            <BarChart3 className="h-4 w-4 text-green-500" />            <span>{exercise.accuracy_rate || 0}%</span>          </div>        </TableCell>        <TableCell>{exercise.created_at || '未知'}</TableCell>        <TableCell>          <div className="flex items-center gap-2">            <Button variant="ghost" size="sm" onClick={handleView}>              <Eye className="h-4 w-4" />            </Button>            <Button variant="ghost" size="sm" onClick={handleEdit}>              <Edit className="h-4 w-4" />            </Button>            <Button variant="ghost" size="sm" className="text-red-600" onClick={handleDelete}>              <Trash2 className="h-4 w-4" />            </Button>          </div>        </TableCell>      </TableRow>    );  });  return (    <TabsContent value="exercises" className="space-y-6">      <Card>        <CardHeader>          <CardTitle className="flex items-center gap-2">            <Brain className="h-5 w-5" />            练习题库          </CardTitle>          <CardDescription>            管理各类练习题，包括词汇、语法、听力和综合练习（共 {filteredExercises.length} 道题目）          </CardDescription>        </CardHeader>        <CardContent>          {/* 练习题统计卡片 */}          <div className="grid gap-4 md:grid-cols-4 mb-6">            <Card>              <CardContent className="flex items-center p-6">                <Target className="h-8 w-8 text-blue-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">词汇练习</p>                  <p className="text-2xl font-bold">{exercises.filter((e: any) => e.type === 'vocabulary').length}</p>                </div>              </CardContent>            </Card>            <Card>              <CardContent className="flex items-center p-6">                <FileText className="h-8 w-8 text-green-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">语法练习</p>                  <p className="text-2xl font-bold">{exercises.filter((e: any) => e.type === 'grammar').length}</p>                </div>              </CardContent>            </Card>            <Card>              <CardContent className="flex items-center p-6">                <Volume2 className="h-8 w-8 text-orange-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">听力练习</p>                  <p className="text-2xl font-bold">{exercises.filter((e: any) => e.type === 'listening').length}</p>                </div>              </CardContent>            </Card>            <Card>              <CardContent className="flex items-center p-6">                <Languages className="h-8 w-8 text-purple-600 mr-3" />                <div>                  <p className="text-sm font-medium text-gray-600">口语练习</p>                  <p className="text-2xl font-bold">{exercises.filter((e: any) => e.type === 'speaking').length}</p>                </div>              </CardContent>            </Card>          </div>          {/* 搜索和筛选 */}          <div className="flex items-center justify-between mb-6">            <div className="flex items-center gap-4">              <div className="relative">                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />                <Input                  placeholder="搜索练习题标题或内容..."                  value={searchTerm}                  onChange={(e) => setSearchTerm(e.target.value)}                  className="pl-10 w-64"                />              </div>              <Select value={filterType} onValueChange={setFilterType}>                <SelectTrigger className="w-32">                  <SelectValue placeholder="类型" />                </SelectTrigger>                <SelectContent>                  <SelectItem value="all">全部类型</SelectItem>                  <SelectItem value="vocabulary">词汇</SelectItem>                  <SelectItem value="grammar">语法</SelectItem>                  <SelectItem value="listening">听力</SelectItem>                  <SelectItem value="speaking">口语</SelectItem>                </SelectContent>              </Select>              <Select value={filterLevel} onValueChange={setFilterLevel}>                <SelectTrigger className="w-32">                  <SelectValue placeholder="难度" />                </SelectTrigger>                <SelectContent>                  <SelectItem value="all">全部难度</SelectItem>                  <SelectItem value="easy">简单</SelectItem>                  <SelectItem value="medium">中等</SelectItem>                  <SelectItem value="hard">困难</SelectItem>                </SelectContent>              </Select>            </div>            <Button onClick={() => handleCreateContent('exercise')} className="bg-indigo-600 hover:bg-indigo-700">              <Plus className="h-4 w-4 mr-2" />              添加练习题            </Button>          </div>          {/* 练习题表格 */}          <Table>            <TableHeader>              <TableRow>                <TableHead className="w-12">                  <Checkbox />                </TableHead>                <TableHead>题目标题</TableHead>                <TableHead>类型</TableHead>                <TableHead>所属课程</TableHead>                <TableHead>难度</TableHead>                <TableHead>分值</TableHead>                <TableHead>完成次数</TableHead>                <TableHead>正确率</TableHead>                <TableHead>创建时间</TableHead>                <TableHead>操作</TableHead>              </TableRow>            </TableHeader>            <TableBody>              {paginatedExercises.map((exercise: any) => (                <ExerciseTableRow                  key={exercise.id}                  exercise={exercise}                  onEdit={handleEdit}                  onDelete={handleDelete}                  onView={handleView}                />              ))}            </TableBody>          </Table>          {totalPages > 1 && (            <div className="mt-4">              <PaginationControls                 currentPage={currentPage}                totalPages={totalPages}                onPageChange={setCurrentPage}              />            </div>          )}        </CardContent>      </Card>    </TabsContent>  );});OptimizedExercisesTab.displayName = 'OptimizedExercisesTab'; 
+OptimizedMaterialsTab.displayName = 'OptimizedMaterialsTab'; 

@@ -107,32 +107,73 @@ export const materialService = {
    * 获取学习材料列表（带筛选和分页）
    */
   async getMaterials(filters: MaterialFilters = {}): Promise<MaterialsResponse> {
-    const response = await api.get('/admin/materials', { params: filters });
-    return response.data;
+    try {
+      const response = await api.get('/api/admin/materials', { params: filters });
+      return response.data;
+    } catch (error) {
+      console.error('获取材料列表失败:', error);
+      return { 
+        success: false, 
+        data: [],
+        pagination: {
+          current_page: 1,
+          last_page: 1,
+          per_page: 20,
+          total: 0,
+          from: 0,
+          to: 0
+        },
+        stats: {} as MaterialStats,
+        courses: [],
+        filter_options: {
+          types: [],
+          statuses: []
+        }
+      };
+    }
   },
 
   /**
    * 获取学习材料统计数据
    */
   async getMaterialStats(): Promise<{ success: boolean; data: MaterialStats }> {
-    const response = await api.get('/admin/materials/stats');
-    return response.data;
+    try {
+      const response = await api.get('/api/admin/materials/stats');
+      return response.data;
+    } catch (error) {
+      console.error('获取材料统计失败:', error);
+      return { success: false, data: {} as MaterialStats };
+    }
   },
 
   /**
    * 获取学习材料详情
    */
-  async getMaterialDetail(id: number): Promise<{ success: boolean; data: MaterialDetail }> {
-    const response = await api.get(`/admin/materials/${id}`);
-    return response.data;
+  async getMaterialDetail(id: number): Promise<{ success: boolean; data?: MaterialDetail }> {
+    try {
+      const response = await api.get(`/api/admin/materials/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取材料详情失败:', error);
+      return { success: false };
+    }
   },
 
   /**
    * 批量操作学习材料
    */
   async batchOperation(request: BatchOperationRequest): Promise<BatchOperationResponse> {
-    const response = await api.post('/admin/materials/batch-operation', request);
-    return response.data;
+    try {
+      const response = await api.post('/api/admin/materials/batch-operation', request);
+      return response.data;
+    } catch (error: any) {
+      console.error('批量操作失败:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || '操作失败',
+        affected_count: 0
+      };
+    }
   },
 
   /**

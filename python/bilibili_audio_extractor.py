@@ -8,13 +8,14 @@ B站视频音频和字幕提取工具
 import os
 import re
 import json
+import sys
 import requests
 import subprocess
-import whisper
+# import whisper  # 暂时禁用，因为Python 3.13兼容性问题
 from pathlib import Path
 from datetime import datetime, timedelta
 import yt_dlp
-from pydub import AudioSegment
+# from pydub import AudioSegment  # 暂时禁用，因为Python 3.13兼容性问题
 import argparse
 
 class BilibiliAudioExtractor:
@@ -29,8 +30,9 @@ class BilibiliAudioExtractor:
         self.output_dir.mkdir(exist_ok=True)
         
         # 初始化Whisper模型（用于AI字幕生成）
-        print("正在加载Whisper AI模型...")
-        self.whisper_model = whisper.load_model("base")
+        # print("正在加载Whisper AI模型...")
+        # self.whisper_model = whisper.load_model("base")
+        self.whisper_model = None  # 暂时禁用
         
         # B站API相关配置
         self.headers = {
@@ -150,10 +152,11 @@ class BilibiliAudioExtractor:
         # 设置yt-dlp选项
         ydl_opts = {
             'outtmpl': str(self.output_dir / f"{video_id}_%(title)s.%(ext)s"),
-            'format': quality,
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitleslangs': ['zh-Hans', 'zh-Hant', 'zh'],
+            'format': '30032+30232/30015+30216/best',  # 使用可用的视频+音频格式组合
+            'writesubtitles': False,  # 暂时禁用字幕下载
+            'writeautomaticsub': False,
+            'ignoreerrors': True,
+            'no_warnings': True,
         }
         
         try:
@@ -231,6 +234,10 @@ class BilibiliAudioExtractor:
             audio_path: 音频文件路径
             language: 语言代码 (zh/en等)
         """
+        if self.whisper_model is None:
+            print("Whisper AI模型未加载，跳过AI字幕生成")
+            return None, "AI字幕功能暂时不可用"
+        
         print("正在使用AI生成字幕...")
         
         try:
@@ -350,10 +357,14 @@ def main():
             end_time=args.end,
             use_ai_subtitle=args.ai_subtitle
         )
-        print("\n🎉 任务完成!")
+        
+        # 输出JSON结果供Laravel解析
+        print(json.dumps(result, ensure_ascii=False))
+        
+        print("\n🎉 任务完成!", file=sys.stderr)
         
     except Exception as e:
-        print(f"\n💥 任务失败: {e}")
+        print(f"\n💥 任务失败: {e}", file=sys.stderr)
         return 1
     
     return 0

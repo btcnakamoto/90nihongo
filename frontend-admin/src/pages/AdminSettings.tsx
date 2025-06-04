@@ -1,5 +1,15 @@
+/**
+ * 系统设置页面
+ * 
+ * 功能描述：管理系统的各种配置选项
+ * 输入参数：无
+ * 返回值：React组件
+ * 用途说明：提供系统设置的用户界面，支持分组管理和实时保存
+ * 作者：nakamotochen
+ * 创建时间：2024-01-21
+ */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,51 +19,363 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Bell, Settings, Shield, Globe, Moon, Sun, MessageSquare } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Bell, Settings, Shield, Globe, Moon, Sun, MessageSquare, Loader2, AlertCircle, CheckCircle2, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import settingsService, { AllSettings, SettingsGroup, SettingItem } from "@/services/settingsService";
+import { useSidebar } from "@/contexts/SidebarContext";
+import { cn } from "@/lib/utils";
 
 const AdminSettings = () => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // 网站基本设置
-  const [siteName, setSiteName] = useState("90天日语");
-  const [siteDescription, setSiteDescription] = useState("学习日语最高效的平台");
-  const [siteLanguage, setSiteLanguage] = useState("zh-CN");
-  
-  // 通知设置
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [systemNotifications, setSystemNotifications] = useState(true);
-  const [marketingEmails, setMarketingEmails] = useState(false);
-  
-  // 安全设置
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
-  const [passwordExpiry, setPasswordExpiry] = useState("never");
-  const [sessionTimeout, setSessionTimeout] = useState("30");
-  
-  // 界面设置
-  const [theme, setTheme] = useState("light");
-  const [itemsPerPage, setItemsPerPage] = useState("10");
-  
-  // 保存设置
-  const handleSave = (section: string) => {
-    setIsLoading(true);
-    
-    // 模拟保存操作
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "设置已保存",
-        description: `${section}设置已成功更新`,
+  const { isCollapsed } = useSidebar();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [allSettings, setAllSettings] = useState<AllSettings>({});
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [activeTab, setActiveTab] = useState("general");
+
+  // 设置分组配置
+  const settingGroups = [
+    { key: 'general', label: '基本设置', icon: Settings, description: '网站基本信息和显示内容' },
+    { key: 'notification', label: '通知设置', icon: Bell, description: '系统通知和电子邮件提醒' },
+    { key: 'security', label: '安全设置', icon: Shield, description: '安全策略和访问控制' },
+    { key: 'appearance', label: '界面设置', icon: Moon, description: '界面主题和显示选项' },
+  ];
+
+  // 加载设置数据
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('开始加载设置数据...');
+      const settings = await settingsService.getAllSettings();
+      console.log('获取到的设置数据:', settings);
+      
+      setAllSettings(settings);
+      
+      // 初始化表单数据
+      const initialFormData: Record<string, any> = {};
+      Object.keys(settings).forEach(group => {
+        Object.keys(settings[group]).forEach(key => {
+          initialFormData[key] = settings[group][key].value;
+        });
       });
-    }, 800);
+      setFormData(initialFormData);
+      console.log('初始化表单数据:', initialFormData);
+    } catch (err: any) {
+      console.error('加载设置失败:', err);
+      setError(err.message);
+      toast({
+        title: "加载失败",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // 保存设置
+  const handleSave = async (group: string) => {
+    try {
+      setIsSaving(true);
+      
+      // 获取该分组的设置数据
+      const groupSettings: Record<string, any> = {};
+      if (allSettings[group]) {
+        Object.keys(allSettings[group]).forEach(key => {
+          groupSettings[key] = formData[key];
+        });
+      }
+
+      const result = await settingsService.updateGroupSettings(group, groupSettings);
+      
+      toast({
+        title: "保存成功",
+        description: `成功更新 ${result.updated.length} 个设置项`,
+      });
+
+      // 重新加载设置以确保数据同步
+      await loadSettings();
+    } catch (err: any) {
+      toast({
+        title: "保存失败",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 重置设置
+  const handleReset = async (group?: string) => {
+    try {
+      setIsResetting(true);
+      await settingsService.resetSettings(group);
+      
+      toast({
+        title: "重置成功",
+        description: group ? `${group} 分组设置已重置为默认值` : "所有设置已重置为默认值",
+      });
+
+      // 重新加载设置
+      await loadSettings();
+    } catch (err: any) {
+      toast({
+        title: "重置失败",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  // 更新表单数据
+  const updateFormData = (key: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  // 渲染设置项
+  const renderSettingItem = (key: string, setting: SettingItem) => {
+    const value = formData[key];
+
+    switch (setting.type) {
+      case 'boolean':
+        return (
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor={key}>{setting.label}</Label>
+              {setting.description && (
+                <p className="text-sm text-muted-foreground">
+                  {setting.description}
+                </p>
+              )}
+            </div>
+            <Switch
+              id={key}
+              checked={Boolean(value)}
+              onCheckedChange={(checked) => updateFormData(key, checked)}
+            />
+          </div>
+        );
+
+      case 'integer':
+        if (setting.options?.allowed_values) {
+          return (
+            <div className="grid gap-2">
+              <Label htmlFor={key}>{setting.label}</Label>
+              {setting.description && (
+                <p className="text-sm text-muted-foreground">
+                  {setting.description}
+                </p>
+              )}
+              <Select value={String(value)} onValueChange={(val) => updateFormData(key, parseInt(val))}>
+                <SelectTrigger id={key}>
+                  <SelectValue placeholder={`选择${setting.label}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {setting.options.allowed_values.map((option: string) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        }
+        return (
+          <div className="grid gap-2">
+            <Label htmlFor={key}>{setting.label}</Label>
+            {setting.description && (
+              <p className="text-sm text-muted-foreground">
+                {setting.description}
+              </p>
+            )}
+            <Input
+              id={key}
+              type="number"
+              value={value || ''}
+              onChange={(e) => updateFormData(key, parseInt(e.target.value) || 0)}
+              placeholder={`输入${setting.label}`}
+            />
+          </div>
+        );
+
+      case 'string':
+        if (setting.options?.allowed_values) {
+          return (
+            <div className="grid gap-2">
+              <Label htmlFor={key}>{setting.label}</Label>
+              {setting.description && (
+                <p className="text-sm text-muted-foreground">
+                  {setting.description}
+                </p>
+              )}
+              <Select value={value} onValueChange={(val) => updateFormData(key, val)}>
+                <SelectTrigger id={key}>
+                  <SelectValue placeholder={`选择${setting.label}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {setting.options.allowed_values.map((option: string) => (
+                    <SelectItem key={option} value={option}>
+                      {getLanguageLabel(option) || option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        }
+        return (
+          <div className="grid gap-2">
+            <Label htmlFor={key}>{setting.label}</Label>
+            {setting.description && (
+              <p className="text-sm text-muted-foreground">
+                {setting.description}
+              </p>
+            )}
+            <Input
+              id={key}
+              value={value || ''}
+              onChange={(e) => updateFormData(key, e.target.value)}
+              placeholder={`输入${setting.label}`}
+            />
+          </div>
+        );
+
+      default:
+        return (
+          <div className="grid gap-2">
+            <Label htmlFor={key}>{setting.label}</Label>
+            {setting.description && (
+              <p className="text-sm text-muted-foreground">
+                {setting.description}
+              </p>
+            )}
+            <Input
+              id={key}
+              value={value || ''}
+              onChange={(e) => updateFormData(key, e.target.value)}
+              placeholder={`输入${setting.label}`}
+            />
+          </div>
+        );
+    }
+  };
+
+  // 获取语言标签
+  const getLanguageLabel = (code: string) => {
+    const labels: Record<string, string> = {
+      'zh-CN': '简体中文',
+      'zh-TW': '繁體中文',
+      'en-US': 'English (US)',
+      'ja-JP': '日本語',
+    };
+    return labels[code];
+  };
+
+  // 渲染设置分组
+  const renderSettingsGroup = (groupKey: string) => {
+    const group = allSettings[groupKey];
+    const groupConfig = settingGroups.find(g => g.key === groupKey);
+    
+    if (!group || !groupConfig) {
+      return (
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center text-muted-foreground">
+              暂无 {groupConfig?.label || groupKey} 设置项
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <groupConfig.icon className="h-5 w-5" />
+            {groupConfig.label}
+          </CardTitle>
+          <CardDescription>
+            {groupConfig.description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            {Object.entries(group).map(([key, setting], index) => (
+              <div key={key}>
+                {renderSettingItem(key, setting)}
+                {index < Object.entries(group).length - 1 && <Separator />}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Button
+            variant="outline"
+            onClick={() => handleReset(groupKey)}
+            disabled={isResetting}
+            className="flex items-center gap-2"
+          >
+            {isResetting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            重置为默认值
+          </Button>
+          <Button 
+            onClick={() => handleSave(groupKey)} 
+            disabled={isSaving}
+            className="flex items-center gap-2"
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            {isSaving ? "保存中..." : "保存设置"}
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  };
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar activePath="/admin/settings" />
+        <div className={cn("main-content flex-1 flex items-center justify-center", isCollapsed && "collapsed")}>
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>加载设置中...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar activePath="/admin/settings" />
       
-      <div className="flex-1 overflow-auto">
+      <div className={cn("main-content flex-1 overflow-auto", isCollapsed && "collapsed")}>
         <header className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-nihongo-darkBlue">系统设置</h1>
@@ -69,278 +391,38 @@ const AdminSettings = () => {
         </header>
         
         <main className="px-8 py-6">
-          <Tabs defaultValue="general" className="w-full">
+          {error && (
+            <Alert className="mb-6" variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {error}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-2"
+                  onClick={loadSettings}
+                >
+                  重试
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="mb-6">
-              <TabsTrigger value="general" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                基本设置
-              </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                通知设置
-              </TabsTrigger>
-              <TabsTrigger value="security" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                安全设置
-              </TabsTrigger>
-              <TabsTrigger value="appearance" className="flex items-center gap-2">
-                <Moon className="h-4 w-4" />
-                界面设置
-              </TabsTrigger>
+              {settingGroups.map(group => (
+                <TabsTrigger key={group.key} value={group.key} className="flex items-center gap-2">
+                  <group.icon className="h-4 w-4" />
+                  {group.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
             
-            <TabsContent value="general">
-              <Card>
-                <CardHeader>
-                  <CardTitle>基本设置</CardTitle>
-                  <CardDescription>
-                    配置您的网站基本信息和显示内容
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="siteName">网站名称</Label>
-                      <Input 
-                        id="siteName" 
-                        value={siteName}
-                        onChange={(e) => setSiteName(e.target.value)}
-                        placeholder="输入网站名称"
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="siteDescription">网站描述</Label>
-                      <Input 
-                        id="siteDescription" 
-                        value={siteDescription}
-                        onChange={(e) => setSiteDescription(e.target.value)}
-                        placeholder="简短描述您的网站"
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="siteLanguage">默认语言</Label>
-                      <Select value={siteLanguage} onValueChange={setSiteLanguage}>
-                        <SelectTrigger id="siteLanguage">
-                          <SelectValue placeholder="选择默认语言" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="zh-CN">简体中文</SelectItem>
-                          <SelectItem value="zh-TW">繁體中文</SelectItem>
-                          <SelectItem value="en-US">English (US)</SelectItem>
-                          <SelectItem value="ja-JP">日本語</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end">
-                  <Button onClick={() => handleSave("基本")} disabled={isLoading}>
-                    {isLoading ? "保存中..." : "保存设置"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="notifications">
-              <Card>
-                <CardHeader>
-                  <CardTitle>通知设置</CardTitle>
-                  <CardDescription>
-                    管理系统通知和电子邮件提醒
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="emailNotifications">电子邮件通知</Label>
-                        <p className="text-sm text-muted-foreground">
-                          接收重要事件的电子邮件通知
-                        </p>
-                      </div>
-                      <Switch
-                        id="emailNotifications"
-                        checked={emailNotifications}
-                        onCheckedChange={setEmailNotifications}
-                      />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="systemNotifications">系统通知</Label>
-                        <p className="text-sm text-muted-foreground">
-                          在系统内显示通知提醒
-                        </p>
-                      </div>
-                      <Switch
-                        id="systemNotifications"
-                        checked={systemNotifications}
-                        onCheckedChange={setSystemNotifications}
-                      />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="marketingEmails">营销邮件</Label>
-                        <p className="text-sm text-muted-foreground">
-                          接收产品更新和营销信息
-                        </p>
-                      </div>
-                      <Switch
-                        id="marketingEmails"
-                        checked={marketingEmails}
-                        onCheckedChange={setMarketingEmails}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end">
-                  <Button onClick={() => handleSave("通知")} disabled={isLoading}>
-                    {isLoading ? "保存中..." : "保存设置"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="security">
-              <Card>
-                <CardHeader>
-                  <CardTitle>安全设置</CardTitle>
-                  <CardDescription>
-                    管理账户安全和登录选项
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="twoFactorAuth">双重认证</Label>
-                        <p className="text-sm text-muted-foreground">
-                          启用两步验证以增强账户安全
-                        </p>
-                      </div>
-                      <Switch
-                        id="twoFactorAuth"
-                        checked={twoFactorAuth}
-                        onCheckedChange={setTwoFactorAuth}
-                      />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="passwordExpiry">密码过期时间</Label>
-                      <Select value={passwordExpiry} onValueChange={setPasswordExpiry}>
-                        <SelectTrigger id="passwordExpiry">
-                          <SelectValue placeholder="选择密码过期时间" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="never">永不过期</SelectItem>
-                          <SelectItem value="30days">30天</SelectItem>
-                          <SelectItem value="60days">60天</SelectItem>
-                          <SelectItem value="90days">90天</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="sessionTimeout">会话超时（分钟）</Label>
-                      <Select value={sessionTimeout} onValueChange={setSessionTimeout}>
-                        <SelectTrigger id="sessionTimeout">
-                          <SelectValue placeholder="选择会话超时时间" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="15">15分钟</SelectItem>
-                          <SelectItem value="30">30分钟</SelectItem>
-                          <SelectItem value="60">60分钟</SelectItem>
-                          <SelectItem value="120">120分钟</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end">
-                  <Button onClick={() => handleSave("安全")} disabled={isLoading}>
-                    {isLoading ? "保存中..." : "保存设置"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="appearance">
-              <Card>
-                <CardHeader>
-                  <CardTitle>界面设置</CardTitle>
-                  <CardDescription>
-                    自定义系统界面和显示偏好
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>主题模式</Label>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant={theme === "light" ? "default" : "outline"}
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => setTheme("light")}
-                        >
-                          <Sun className="h-4 w-4" />
-                          亮色模式
-                        </Button>
-                        <Button
-                          variant={theme === "dark" ? "default" : "outline"}
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => setTheme("dark")}
-                        >
-                          <Moon className="h-4 w-4" />
-                          暗色模式
-                        </Button>
-                        <Button
-                          variant={theme === "system" ? "default" : "outline"}
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => setTheme("system")}
-                        >
-                          <Globe className="h-4 w-4" />
-                          跟随系统
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="itemsPerPage">每页显示条目数</Label>
-                      <Select value={itemsPerPage} onValueChange={setItemsPerPage}>
-                        <SelectTrigger id="itemsPerPage">
-                          <SelectValue placeholder="选择每页显示条目数" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="10">10条/页</SelectItem>
-                          <SelectItem value="20">20条/页</SelectItem>
-                          <SelectItem value="50">50条/页</SelectItem>
-                          <SelectItem value="100">100条/页</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end">
-                  <Button onClick={() => handleSave("界面")} disabled={isLoading}>
-                    {isLoading ? "保存中..." : "保存设置"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
+            {settingGroups.map(group => (
+              <TabsContent key={group.key} value={group.key}>
+                {renderSettingsGroup(group.key)}
+              </TabsContent>
+            ))}
           </Tabs>
         </main>
       </div>

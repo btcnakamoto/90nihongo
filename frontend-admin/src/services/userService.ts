@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+// 使用相对路径，通过vite代理转发到后端
+const API_BASE = '';
 
 // 用户数据类型定义
 export interface User {
@@ -120,7 +121,7 @@ export class UserService {
    */
   static async getUsers(params: UserListParams = {}): Promise<ApiResponse<PaginatedResponse<User>>> {
     try {
-      const response = await axios.get(`${API_BASE}/admin/users`, {
+      const response = await axios.get(`${API_BASE}/api/admin/users`, {
         params,
         headers: getAuthHeaders(),
       });
@@ -135,7 +136,7 @@ export class UserService {
    */
   static async getUser(id: number): Promise<ApiResponse<User>> {
     try {
-      const response = await axios.get(`${API_BASE}/admin/users/${id}`, {
+      const response = await axios.get(`${API_BASE}/api/admin/users/${id}`, {
         headers: getAuthHeaders(),
       });
       return response.data;
@@ -149,7 +150,7 @@ export class UserService {
    */
   static async createUser(data: UserCreateData): Promise<ApiResponse<User>> {
     try {
-      const response = await axios.post(`${API_BASE}/admin/users`, data, {
+      const response = await axios.post(`${API_BASE}/api/admin/users`, data, {
         headers: getAuthHeaders(),
       });
       return response.data;
@@ -163,7 +164,7 @@ export class UserService {
    */
   static async updateUser(id: number, data: UserUpdateData): Promise<ApiResponse<User>> {
     try {
-      const response = await axios.put(`${API_BASE}/admin/users/${id}`, data, {
+      const response = await axios.put(`${API_BASE}/api/admin/users/${id}`, data, {
         headers: getAuthHeaders(),
       });
       return response.data;
@@ -177,7 +178,7 @@ export class UserService {
    */
   static async deleteUser(id: number): Promise<ApiResponse> {
     try {
-      const response = await axios.delete(`${API_BASE}/admin/users/${id}`, {
+      const response = await axios.delete(`${API_BASE}/api/admin/users/${id}`, {
         headers: getAuthHeaders(),
       });
       return response.data;
@@ -191,7 +192,7 @@ export class UserService {
    */
   static async batchAction(data: BatchActionData): Promise<ApiResponse> {
     try {
-      const response = await axios.post(`${API_BASE}/admin/users/batch-action`, data, {
+      const response = await axios.post(`${API_BASE}/api/admin/users/batch-action`, data, {
         headers: getAuthHeaders(),
       });
       return response.data;
@@ -205,7 +206,7 @@ export class UserService {
    */
   static async getUserStats(): Promise<ApiResponse<UserStats>> {
     try {
-      const response = await axios.get(`${API_BASE}/admin/users-stats`, {
+      const response = await axios.get(`${API_BASE}/api/admin/users-stats`, {
         headers: getAuthHeaders(),
       });
       return response.data;
@@ -219,7 +220,7 @@ export class UserService {
    */
   static async exportUsers(params: UserListParams = {}): Promise<Blob> {
     try {
-      const response = await axios.get(`${API_BASE}/admin/users/export`, {
+      const response = await axios.get(`${API_BASE}/api/admin/users/export`, {
         params,
         headers: getAuthHeaders(),
         responseType: 'blob',

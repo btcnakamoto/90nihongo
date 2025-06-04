@@ -1,9 +1,10 @@
-
 import React from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import StatsCard from "@/components/admin/StatsCard";
 import { Bell, Users, BookOpen, BarChart, CheckCircle } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart as RechartsBarChart, Bar } from "recharts";
+import { useSidebar } from "@/contexts/SidebarContext";
+import { cn } from "@/lib/utils";
 
 // 模拟用户活跃度数据
 const userActivityData = [
@@ -37,11 +38,13 @@ const retentionData = [
 ];
 
 const AdminAnalytics = () => {
+  const { isCollapsed } = useSidebar();
+  
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar activePath="/admin/analytics" />
       
-      <div className="flex-1 overflow-auto">
+      <div className={cn("main-content flex-1 overflow-auto", isCollapsed && "collapsed")}>
         <header className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-nihongo-darkBlue">数据分析</h1>

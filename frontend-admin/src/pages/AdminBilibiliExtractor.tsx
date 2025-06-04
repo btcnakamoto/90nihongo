@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import TopNavbar from "@/components/admin/TopNavbar";
 import PageHeader from "@/components/admin/PageHeader";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Volume2, 
   Download, 
@@ -28,6 +29,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/contexts/SidebarContext";
+import apiClient from "@/lib/api";
+import { toast } from "@/components/ui/use-toast";
 
 interface ExtractionJob {
   id: string;
@@ -66,65 +69,68 @@ const AdminBilibiliExtractor: React.FC = () => {
   const [endTime, setEndTime] = useState("");
   const [description, setDescription] = useState("");
   const [useAiSubtitle, setUseAiSubtitle] = useState(true);
+  const [extractionMode, setExtractionMode] = useState<'online' | 'offline'>('offline');
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
+  const [selectedUrl, setSelectedUrl] = useState("");
+  const [manualVideoInfo, setManualVideoInfo] = useState<VideoInfo | null>(null);
+  const [loadingVideoInfo, setLoadingVideoInfo] = useState(false);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   // 获取视频信息
-  const fetchVideoInfo = async (url: string) => {
-    if (!url) return;
-    
-    setIsLoading(true);
+  const getVideoInfo = async (url: string) => {
     try {
-      const response = await fetch('/admin/resources/bilibili/video-info', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        },
-        body: JSON.stringify({ url })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setVideoInfo(data.video_info);
+      setLoadingVideoInfo(true);
+      console.log('正在获取视频信息:', url);
+      
+      const response = await apiClient.post('/api/admin/resources/bilibili/video-info', { url });
+      console.log('获取视频信息成功:', response.data);
+      
+      if (response.data.success) {
+        setVideoInfo(response.data.data);
+        setSelectedUrl(url);
+        setManualVideoInfo(null);
+        console.log('已设置视频信息:', response.data.data);
       } else {
-        console.error('获取视频信息失败');
+        throw new Error(response.data.message || '获取视频信息失败');
       }
-    } catch (error) {
-      console.error('获取视频信息时出错:', error);
+    } catch (error: any) {
+      console.error('获取视频信息失败:', error);
+      toast({
+        title: "获取视频信息失败",
+        description: error.response?.data?.message || error.message,
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      setLoadingVideoInfo(false);
     }
   };
 
   // 提交提取任务
-  const handleSubmitExtraction = async () => {
+  const submitExtraction = async () => {
     if (!videoUrl || !startTime || !endTime) {
-      alert('请填写完整的提取信息');
+      toast({
+        title: "参数不完整",
+        description: "请填写视频链接、开始时间和结束时间",
+        variant: "destructive",
+      });
       return;
     }
 
-    setIsLoading(true);
     try {
-      const response = await fetch('/admin/resources/bilibili/extract', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        },
-        body: JSON.stringify({
-          video_url: videoUrl,
-          start_time: startTime,
-          end_time: endTime,
-          description,
-          use_ai_subtitle: useAiSubtitle
-        })
+      setIsLoading(true);
+      const response = await apiClient.post('/api/admin/resources/bilibili/extract', {
+        video_url: videoUrl,
+        start_time: startTime,
+        end_time: endTime,
+        description: description.trim() || undefined,
+        use_ai_subtitle: useAiSubtitle,
+        extraction_mode: extractionMode
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.data.success) {
         // 添加新任务到列表
         const newJob: ExtractionJob = {
-          id: data.job_id,
+          id: response.data.data.job_id || Date.now().toString(),
           videoUrl,
           videoTitle: videoInfo?.title,
           startTime,
@@ -142,111 +148,132 @@ const AdminBilibiliExtractor: React.FC = () => {
         setDescription("");
         setVideoInfo(null);
         
-        alert('提取任务已提交，请在任务列表中查看进度');
+        toast({
+          title: "任务提交成功",
+          description: "提取任务已提交，请在任务列表中查看进度",
+        });
         setActiveTab("jobs");
       } else {
-        const error = await response.json();
-        alert(`提交失败: ${error.message}`);
+        throw new Error(response.data.message || '提交失败');
       }
-    } catch (error) {
-      console.error('提交提取任务时出错:', error);
-      alert('提交失败，请重试');
+    } catch (error: any) {
+      console.error('提交提取任务失败:', error);
+      toast({
+        title: "提交失败",
+        description: error.response?.data?.message || error.message,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   // 获取提取任务列表
-  const fetchJobs = async () => {
+  const loadJobs = useCallback(async () => {
     try {
-      const response = await fetch('/admin/resources/bilibili/jobs', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setJobs(data.jobs);
+      setLoadingJobs(true);
+      const response = await apiClient.get('/api/admin/resources/bilibili/jobs');
+      if (response.data.success) {
+        setJobs(response.data.data || []);
       }
-    } catch (error) {
-      console.error('获取任务列表时出错:', error);
+    } catch (error: any) {
+      console.error('加载任务列表失败:', error);
+      toast({
+        title: "加载任务列表失败",
+        description: error.response?.data?.message || error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingJobs(false);
     }
-  };
+  }, []);
 
   // 删除任务
-  const handleDeleteJob = async (jobId: string) => {
-    if (!confirm('确定要删除这个任务吗？')) return;
-
+  const deleteJob = async (jobId: string) => {
     try {
-      const response = await fetch(`/admin/resources/bilibili/jobs/${jobId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        }
+      await apiClient.delete(`/api/admin/resources/bilibili/jobs/${jobId}`);
+      toast({
+        title: "删除成功",
+        description: "任务已被删除",
       });
-
-      if (response.ok) {
-        setJobs(prev => prev.filter(job => job.id !== jobId));
-      } else {
-        alert('删除失败');
-      }
-    } catch (error) {
-      console.error('删除任务时出错:', error);
-      alert('删除失败');
+      await loadJobs();
+    } catch (error: any) {
+      console.error('删除任务失败:', error);
+      toast({
+        title: "删除失败",
+        description: error.response?.data?.message || "删除任务时发生错误",
+        variant: "destructive",
+      });
     }
   };
 
   // 下载文件
-  const handleDownloadFile = async (jobId: string, fileType: 'audio' | 'subtitle') => {
+  const downloadFile = async (jobId: string, fileType: string) => {
     try {
-      const response = await fetch(`/admin/resources/bilibili/jobs/${jobId}/download/${fileType}`, {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/admin/resources/bilibili/jobs/${jobId}/download/${fileType}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        }
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
-      if (response.ok) {
-        // 创建下载链接
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${fileType}_${jobId}.${fileType === 'audio' ? 'wav' : 'srt'}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        alert('下载失败');
+      if (!response.ok) {
+        throw new Error('下载失败');
       }
-    } catch (error) {
-      console.error('下载文件时出错:', error);
-      alert('下载失败');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `${jobId}_${fileType}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "下载成功",
+        description: `${fileType} 文件下载完成`,
+      });
+    } catch (error: any) {
+      console.error('下载文件失败:', error);
+      toast({
+        title: "下载失败",
+        description: error.message || "下载文件时发生错误",
+        variant: "destructive",
+      });
     }
   };
 
   // 重试任务
-  const handleRetryJob = async (jobId: string) => {
-    if (!confirm('确定要重新提取这个任务吗？')) return;
-
+  const retryJob = async (jobId: string) => {
     try {
-      const response = await fetch(`/admin/resources/bilibili/jobs/${jobId}/retry`, {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/admin/resources/bilibili/jobs/${jobId}/retry`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (response.ok) {
-        alert('任务已重新提交');
-        fetchJobs();
-      } else {
-        alert('重试失败');
+      if (!response.ok) {
+        throw new Error('重试失败');
       }
-    } catch (error) {
-      console.error('重试任务时出错:', error);
-      alert('重试失败');
+
+      toast({
+        title: "重试成功",
+        description: "任务已重新启动",
+      });
+      
+      await loadJobs();
+    } catch (error: any) {
+      console.error('重试任务失败:', error);
+      toast({
+        title: "重试失败",
+        description: error.message || "重试任务时发生错误",
+        variant: "destructive",
+      });
     }
   };
 
@@ -281,11 +308,11 @@ const AdminBilibiliExtractor: React.FC = () => {
 
   // 组件挂载时获取任务列表
   useEffect(() => {
-    fetchJobs();
+    loadJobs();
     // 设置定时刷新任务状态
-    const interval = setInterval(fetchJobs, 5000);
+    const interval = setInterval(loadJobs, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadJobs]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -352,7 +379,7 @@ const AdminBilibiliExtractor: React.FC = () => {
                             className="flex-1"
                           />
                           <Button 
-                            onClick={() => fetchVideoInfo(videoUrl)}
+                            onClick={() => getVideoInfo(videoUrl)}
                             disabled={isLoading || !videoUrl}
                             variant="outline"
                           >
@@ -410,6 +437,35 @@ const AdminBilibiliExtractor: React.FC = () => {
                         />
                       </div>
 
+                      <div>
+                        <Label htmlFor="extractionMode">提取模式</Label>
+                        <Select value={extractionMode} onValueChange={(value: 'online' | 'offline') => setExtractionMode(value)}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="选择提取模式" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="offline">
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">离线模式 (推荐)</span>
+                                <span className="text-xs text-gray-500">先下载视频，再提取音频 - 稳定可靠</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="online">
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">在线模式 (实验性)</span>
+                                <span className="text-xs text-gray-500">直接从视频流提取 - 节省存储空间</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {extractionMode === 'online' 
+                            ? '在线模式直接从视频流中提取音频，无需下载完整视频，但可能不够稳定'
+                            : '离线模式先下载完整视频，然后提取音频，更加稳定可靠'
+                          }
+                        </p>
+                      </div>
+
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -417,12 +473,15 @@ const AdminBilibiliExtractor: React.FC = () => {
                           checked={useAiSubtitle}
                           onChange={(e) => setUseAiSubtitle(e.target.checked)}
                           className="rounded"
+                          disabled={extractionMode === 'online'}
                         />
-                        <Label htmlFor="useAiSubtitle">使用AI生成字幕</Label>
+                        <Label htmlFor="useAiSubtitle" className={extractionMode === 'online' ? 'text-gray-400' : ''}>
+                          使用AI生成字幕 {extractionMode === 'online' && '(在线模式暂不支持)'}
+                        </Label>
                       </div>
 
                       <Button 
-                        onClick={handleSubmitExtraction}
+                        onClick={submitExtraction}
                         disabled={isLoading || !videoUrl || !startTime || !endTime}
                         className="w-full"
                       >
@@ -467,13 +526,21 @@ const AdminBilibiliExtractor: React.FC = () => {
                         <div className="flex items-start gap-3">
                           <div className="w-6 h-6 rounded-full bg-nihongo-indigo text-white text-xs flex items-center justify-center font-bold mt-0.5">3</div>
                           <div>
+                            <p className="font-medium">选择提取模式</p>
+                            <p className="text-sm text-gray-600">在线模式节省空间，离线模式更稳定</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-full bg-nihongo-indigo text-white text-xs flex items-center justify-center font-bold mt-0.5">4</div>
+                          <div>
                             <p className="font-medium">选择字幕模式</p>
                             <p className="text-sm text-gray-600">AI生成或使用B站原生字幕</p>
                           </div>
                         </div>
                         
                         <div className="flex items-start gap-3">
-                          <div className="w-6 h-6 rounded-full bg-nihongo-indigo text-white text-xs flex items-center justify-center font-bold mt-0.5">4</div>
+                          <div className="w-6 h-6 rounded-full bg-nihongo-indigo text-white text-xs flex items-center justify-center font-bold mt-0.5">5</div>
                           <div>
                             <p className="font-medium">提交和监控</p>
                             <p className="text-sm text-gray-600">任务提交后可在任务列表中查看进度</p>
@@ -481,13 +548,29 @@ const AdminBilibiliExtractor: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t">
-                        <h4 className="font-medium mb-2">支持的时间格式:</h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          <li>• HH:MM:SS (如: 00:01:30)</li>
-                          <li>• MM:SS (如: 1:30)</li>
-                          <li>• 秒数 (如: 90)</li>
-                        </ul>
+                      <div className="pt-4 border-t space-y-4">
+                        <div>
+                          <h4 className="font-medium mb-2">提取模式对比:</h4>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-start gap-2">
+                              <span className="font-medium text-green-600">离线模式:</span>
+                              <span className="text-gray-600">先下载完整视频，再提取音频。稳定可靠，支持AI字幕</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="font-medium text-blue-600">在线模式:</span>
+                              <span className="text-gray-600">直接从视频流提取音频。节省存储空间，但可能不够稳定</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-medium mb-2">支持的时间格式:</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• HH:MM:SS (如: 00:01:30)</li>
+                            <li>• MM:SS (如: 1:30)</li>
+                            <li>• 秒数 (如: 90)</li>
+                          </ul>
+                        </div>
                       </div>
 
                       <div className="pt-4 border-t">
@@ -511,7 +594,7 @@ const AdminBilibiliExtractor: React.FC = () => {
                       <Clock className="h-5 w-5" />
                       提取任务列表
                     </CardTitle>
-                    <Button onClick={fetchJobs} variant="outline" size="sm">
+                    <Button onClick={loadJobs} variant="outline" size="sm">
                       <RefreshCw className="h-4 w-4 mr-2" />
                       刷新
                     </Button>
@@ -552,7 +635,7 @@ const AdminBilibiliExtractor: React.FC = () => {
                                 <Button 
                                   size="sm" 
                                   variant="ghost" 
-                                  onClick={() => handleDeleteJob(job.id)}
+                                  onClick={() => deleteJob(job.id)}
                                   className="text-red-600 hover:text-red-700"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -604,7 +687,7 @@ const AdminBilibiliExtractor: React.FC = () => {
                                           <div className="flex gap-2">
                                             <Button 
                                               size="sm" 
-                                              onClick={() => handleDownloadFile(job.id, 'audio')}
+                                              onClick={() => downloadFile(job.id, 'audio')}
                                               className="bg-green-600 hover:bg-green-700"
                                             >
                                               <Download className="h-4 w-4 mr-1" />
@@ -632,7 +715,7 @@ const AdminBilibiliExtractor: React.FC = () => {
                                           <div className="flex gap-2">
                                             <Button 
                                               size="sm" 
-                                              onClick={() => handleDownloadFile(job.id, 'subtitle')}
+                                              onClick={() => downloadFile(job.id, 'subtitle')}
                                               className="bg-blue-600 hover:bg-blue-700"
                                             >
                                               <Download className="h-4 w-4 mr-1" />
@@ -718,7 +801,7 @@ const AdminBilibiliExtractor: React.FC = () => {
                                       <Button 
                                         size="sm" 
                                         variant="outline"
-                                        onClick={() => handleRetryJob(job.id)}
+                                        onClick={() => retryJob(job.id)}
                                         className="border-red-300 text-red-700 hover:bg-red-50"
                                       >
                                         <RefreshCw className="h-4 w-4 mr-1" />

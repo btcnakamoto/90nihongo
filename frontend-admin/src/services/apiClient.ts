@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+// 使用相对路径，通过vite代理转发到后端
+const API_BASE = '';
 
 // 创建axios实例
 export const apiClient = axios.create({
@@ -33,10 +34,14 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token过期或无效，清除本地存储并跳转到登录页
+      // Token过期或无效，清除本地存储并跳转到前端登录页
       localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      window.location.href = '/admin/login';
+      localStorage.removeItem('admin_info');
+      
+      // 避免在登录页面重复跳转
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

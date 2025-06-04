@@ -135,7 +135,7 @@ const AdminDatabaseBackup = () => {
   const fetchDatabaseStatus = async () => {
     try {
       const response = await axios.get<BackupResponse>(
-        `${API_BASE}/admin/database/status`,
+        `${API_BASE}/api/admin/database/status`,
         { headers: getAuthHeaders() }
       );
       
@@ -160,11 +160,11 @@ const AdminDatabaseBackup = () => {
   // 获取数据库表信息
   const fetchDatabaseTables = async () => {
     setTablesLoading(true);
-    console.log('开始获取数据库表信息...', `${API_BASE}/admin/database/tables`);
+    console.log('开始获取数据库表信息...', `${API_BASE}/api/admin/database/tables`);
     
     try {
       const response = await axios.get<BackupResponse>(
-        `${API_BASE}/admin/database/tables`,
+        `${API_BASE}/api/admin/database/tables`,
         { headers: getAuthHeaders() }
       );
       
@@ -951,7 +951,7 @@ const AdminDatabaseBackup = () => {
     setLoading(true);
     try {
       const response = await axios.get<BackupResponse>(
-        `${API_BASE}/admin/database/backups`,
+        `${API_BASE}/api/admin/database/backups`,
         { headers: getAuthHeaders() }
       );
       
@@ -980,7 +980,7 @@ const AdminDatabaseBackup = () => {
     setCreateLoading(true);
     try {
       const response = await axios.post<BackupResponse>(
-        `${API_BASE}/admin/database/backups`,
+        `${API_BASE}/api/admin/database/backups`,
         { description: description.trim() || undefined },
         { headers: getAuthHeaders() }
       );
@@ -1025,7 +1025,7 @@ const AdminDatabaseBackup = () => {
     setCreateLoading(true);
     try {
       const response = await axios.post<BackupResponse>(
-        `${API_BASE}/admin/database/backups/tables`,
+        `${API_BASE}/api/admin/database/backups/tables`,
         { 
           tables: selectedTables,
           description: tableBackupDescription.trim() || undefined 
@@ -1067,7 +1067,7 @@ const AdminDatabaseBackup = () => {
   const downloadBackup = async (filename: string) => {
     try {
       const response = await axios.get(
-        `${API_BASE}/admin/database/backups/${filename}/download`,
+        `${API_BASE}/api/admin/database/backups/${filename}/download`,
         {
           headers: getAuthHeaders(),
           responseType: 'blob',
@@ -1101,7 +1101,7 @@ const AdminDatabaseBackup = () => {
   const deleteBackup = async (filename: string) => {
     try {
       const response = await axios.delete<BackupResponse>(
-        `${API_BASE}/admin/database/backups/${filename}`,
+        `${API_BASE}/api/admin/database/backups/${filename}`,
         { headers: getAuthHeaders() }
       );
       

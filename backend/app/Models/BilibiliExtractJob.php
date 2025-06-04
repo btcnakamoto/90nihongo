@@ -24,6 +24,7 @@ class BilibiliExtractJob extends Model
         'end_time',
         'description',
         'use_ai_subtitle',
+        'extraction_mode',
         'status',
         'progress',
         'audio_path',

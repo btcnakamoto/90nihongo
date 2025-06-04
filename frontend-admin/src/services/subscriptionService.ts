@@ -1,7 +1,5 @@
 import { apiClient } from './apiClient';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-
 // 订阅相关数据类型定义
 export interface SubscriptionPlan {
   id: number;
@@ -110,7 +108,7 @@ export class SubscriptionService {
    */
   static async getPlans(): Promise<ApiResponse<SubscriptionPlan[]>> {
     try {
-      const response = await apiClient.get('/admin/subscriptions/plans');
+      const response = await apiClient.get('/api/admin/subscriptions/plans');
       return response.data;
     } catch (error: any) {
       console.error('获取订阅计划失败:', error);
@@ -123,7 +121,7 @@ export class SubscriptionService {
    */
   static async getStats(): Promise<ApiResponse<SubscriptionStats>> {
     try {
-      const response = await apiClient.get('/admin/subscriptions/stats');
+      const response = await apiClient.get('/api/admin/subscriptions/stats');
       return response.data;
     } catch (error: any) {
       console.error('获取订阅统计失败:', error);
@@ -136,7 +134,7 @@ export class SubscriptionService {
    */
   static async getReferralStats(): Promise<ApiResponse<ReferralStats>> {
     try {
-      const response = await apiClient.get('/admin/subscriptions/referrals/stats');
+      const response = await apiClient.get('/api/admin/subscriptions/referrals/stats');
       return response.data;
     } catch (error: any) {
       console.error('获取推荐统计失败:', error);
@@ -153,7 +151,7 @@ export class SubscriptionService {
     durationDays?: number
   ): Promise<ApiResponse<any>> {
     try {
-      const response = await apiClient.put(`/admin/subscriptions/users/${userId}/subscription`, {
+      const response = await apiClient.put(`/api/admin/subscriptions/users/${userId}/subscription`, {
         subscription_type: subscriptionType,
         duration_days: durationDays,
       });
@@ -173,7 +171,7 @@ export class SubscriptionService {
     durationDays?: number
   ): Promise<ApiResponse<any>> {
     try {
-      const response = await apiClient.post('/admin/subscriptions/users/batch-update', {
+      const response = await apiClient.post('/api/admin/subscriptions/users/batch-update', {
         user_ids: userIds,
         subscription_type: subscriptionType,
         duration_days: durationDays,
@@ -190,7 +188,7 @@ export class SubscriptionService {
    */
   static async getExpiringSubscriptions(days: number = 7): Promise<ApiResponse<any>> {
     try {
-      const response = await apiClient.get('/admin/subscriptions/expiring', {
+      const response = await apiClient.get('/api/admin/subscriptions/expiring', {
         params: { days }
       });
       return response.data;

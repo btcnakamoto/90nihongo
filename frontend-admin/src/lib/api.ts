@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-// API基础配置 - 使用环境变量
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// API基础配置 - 使用相对路径，通过vite代理转发到后端
+const API_BASE_URL = '';
 
 // 开发环境下打印配置信息
 if (import.meta.env.DEV) {
   console.log('🔧 API Configuration:', {
-    baseURL: API_BASE_URL,
+    baseURL: API_BASE_URL || '相对路径（通过vite代理）',
     environment: import.meta.env.MODE,
   });
 }
@@ -61,8 +61,8 @@ apiClient.interceptors.response.use(
       console.log('🔒 收到401错误，token可能已过期');
       
       // 只有在特定API端点收到401时才自动跳转
-      const isAuthEndpoint = error.config?.url?.includes('/admin/me') || 
-                            error.config?.url?.includes('/admin/login');
+      const isAuthEndpoint = error.config?.url?.includes('/api/admin/me') || 
+                            error.config?.url?.includes('/api/admin/login');
       
       if (isAuthEndpoint) {
         // Token过期或无效，清除本地存储并跳转到登录页
@@ -85,7 +85,7 @@ apiClient.interceptors.response.use(
 export const adminAuthApi = {
   // 登录
   login: async (account: string, password: string) => {
-    const response = await apiClient.post('/admin/login', {
+    const response = await apiClient.post('/api/admin/login', {
       account,
       password,
     });
@@ -94,25 +94,25 @@ export const adminAuthApi = {
 
   // 登出（当前设备）
   logout: async () => {
-    const response = await apiClient.post('/admin/logout');
+    const response = await apiClient.post('/api/admin/logout');
     return response.data;
   },
 
   // 全部登出（所有设备）
   logoutAll: async () => {
-    const response = await apiClient.post('/admin/logout-all');
+    const response = await apiClient.post('/api/admin/logout-all');
     return response.data;
   },
 
   // 获取当前管理员信息
   getMe: async () => {
-    const response = await apiClient.get('/admin/me');
+    const response = await apiClient.get('/api/admin/me');
     return response.data;
   },
 
   // 刷新Token
   refresh: async () => {
-    const response = await apiClient.post('/admin/refresh');
+    const response = await apiClient.post('/api/admin/refresh');
     return response.data;
   },
 };
@@ -121,26 +121,26 @@ export const adminAuthApi = {
 export const adminApi = {
   // 获取统计数据
   getStats: async () => {
-    const response = await apiClient.get('/admin/stats');
+    const response = await apiClient.get('/api/admin/stats');
     return response.data;
   },
 
   // 用户管理
   getUsers: async () => {
-    const response = await apiClient.get('/admin/users');
+    const response = await apiClient.get('/api/admin/users');
     return response.data;
   },
 
   // 内容管理
   getContent: async () => {
-    const response = await apiClient.get('/admin/content');
+    const response = await apiClient.get('/api/admin/content');
     return response.data;
   },
 };
 
 // 导出配置信息（用于调试）
 export const apiConfig = {
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL || '相对路径（通过vite代理）',
   environment: import.meta.env.MODE,
   isDev: import.meta.env.DEV,
 };

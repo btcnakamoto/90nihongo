@@ -261,9 +261,32 @@ class ContentController extends Controller
         try {
             $query = LearningMaterial::with(['course']);
             
+            // 处理include参数，加载关联数据
+            if ($request->has('include')) {
+                $includes = explode(',', $request->include);
+                $validIncludes = ['categories', 'tags', 'dialogue'];
+                
+                foreach ($includes as $include) {
+                    $include = trim($include);
+                    if (in_array($include, $validIncludes)) {
+                        $query->with($include);
+                    }
+                }
+            }
+            
             // 搜索
             if ($request->has('search') && !empty($request->search)) {
-                $query->where('title', 'like', '%' . $request->search . '%');
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('title', 'like', '%' . $search . '%')
+                      ->orWhere('source_id', 'like', '%' . $search . '%');
+                      
+                    // 如果搜索JSON内容
+                    if (strlen($search) > 1) {
+                        $q->orWhereRaw("JSON_EXTRACT(content, '$.japanese') LIKE ?", ["%{$search}%"])
+                          ->orWhereRaw("JSON_EXTRACT(content, '$.chinese') LIKE ?", ["%{$search}%"]);
+                    }
+                });
             }
             
             // 按类型筛选
@@ -271,8 +294,22 @@ class ContentController extends Controller
                 $query->where('type', $request->type);
             }
             
+            // 按分类筛选
+            if ($request->has('category') && $request->category !== 'all') {
+                $query->whereHas('categories', function ($q) use ($request) {
+                    $q->where('categories.id', $request->category);
+                });
+            }
+            
+            // 按标签筛选
+            if ($request->has('tag') && $request->tag !== 'all') {
+                $query->whereHas('tags', function ($q) use ($request) {
+                    $q->where('tags.id', $request->tag);
+                });
+            }
+            
             $materials = $query->orderBy('created_at', 'desc')->get()->map(function ($material) {
-                return [
+                $data = [
                     'id' => $material->id,
                     'title' => $material->title,
                     'type' => $material->type,
@@ -289,9 +326,61 @@ class ContentController extends Controller
                     'rating' => rand(40, 50) / 10,
                     'downloads' => rand(50, 500),
                     'file_type' => $this->getFileTypeFromUrl($material->media_url),
+                    'content_length' => $material->content_length,
+                    'content_style' => $material->content_style,
+                    'source_id' => $material->source_id,
+                    'source_type' => $material->source_type,
                     'created_at' => $material->created_at->format('Y-m-d H:i:s'),
                     'updated_at' => $material->updated_at->format('Y-m-d H:i:s'),
                 ];
+
+                // 添加分类信息
+                if ($material->relationLoaded('categories')) {
+                    $data['categories'] = $material->categories->map(function ($category) {
+                        return [
+                            'id' => $category->id,
+                            'name' => $category->name,
+                            'slug' => $category->slug,
+                            'level' => $category->level,
+                            'parent_id' => $category->parent_id
+                        ];
+                    });
+                }
+
+                // 添加标签信息
+                if ($material->relationLoaded('tags')) {
+                    $data['tags'] = $material->tags->map(function ($tag) {
+                        return [
+                            'id' => $tag->id,
+                            'name' => $tag->name,
+                            'slug' => $tag->slug,
+                            'usage_count' => $tag->usage_count
+                        ];
+                    });
+                }
+
+                // 添加对话信息
+                if ($material->relationLoaded('dialogue') && $material->dialogue) {
+                    $data['dialogue'] = [
+                        'id' => $material->dialogue->id,
+                        'title' => $material->dialogue->title,
+                        'scenario' => $material->dialogue->scenario,
+                        'participant_count' => $material->dialogue->participant_count,
+                        'difficulty_level' => $material->dialogue->difficulty_level,
+                        'lines' => $material->dialogue->dialogueLines ? $material->dialogue->dialogueLines->map(function ($line) {
+                            return [
+                                'id' => $line->id,
+                                'speaker' => $line->speaker,
+                                'line_order' => $line->line_order,
+                                'japanese_text' => $line->japanese_text,
+                                'chinese_text' => $line->chinese_text,
+                                'audio_url' => $line->audio_url
+                            ];
+                        }) : []
+                    ];
+                }
+
+                return $data;
             });
             
             return response()->json([
@@ -379,6 +468,65 @@ class ContentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => '获取练习题列表失败',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 获取句子/例句列表
+     */
+    public function getSentences(Request $request)
+    {
+        try {
+            $query = LearningMaterial::whereJsonContains('metadata->content_type', 'sentence');
+
+            // 搜索
+            if ($request->has('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->whereRaw("JSON_EXTRACT(content, '$.japanese') LIKE ?", ["%{$search}%"])
+                      ->orWhereRaw("JSON_EXTRACT(content, '$.chinese') LIKE ?", ["%{$search}%"]);
+                });
+            }
+
+            // 难度筛选
+            if ($request->has('difficulty') && $request->difficulty !== 'all') {
+                $query->whereJsonContains('metadata->difficulty', $request->difficulty);
+            }
+
+            // 分类筛选
+            if ($request->has('category') && $request->category !== 'all') {
+                $query->whereJsonContains('metadata->category', $request->category);
+            }
+
+            $sentences = $query->orderBy('created_at', 'desc')->get()->map(function ($item) {
+                $content = json_decode($item->content, true);
+                $metadata = $item->metadata;
+                
+                return [
+                    'id' => $item->id,
+                    'japanese' => $content['japanese'] ?? '',
+                    'chinese' => $content['chinese'] ?? '',
+                    'difficulty' => $metadata['difficulty'] ?? '',
+                    'category' => $metadata['category'] ?? '',
+                    'subcategory' => $metadata['subcategory'] ?? '',
+                    'style' => $metadata['style'] ?? '',
+                    'length' => $metadata['length'] ?? '',
+                    'tags' => $metadata['tags'] ?? [],
+                    'created_at' => $item->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $sentences
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '获取句子列表失败',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -821,6 +969,9 @@ class ContentController extends Controller
                             case 'exercise':
                                 $this->createExerciseFromData($item);
                                 break;
+                            case 'sentence':
+                                $this->createSentenceFromData($item);
+                                break;
                             default:
                                 throw new \Exception('不支持的内容类型');
                         }
@@ -904,6 +1055,11 @@ class ContentController extends Controller
                     case 'exercise':
                         $deletedCount = Exercise::whereIn('id', $ids)->delete();
                         break;
+                    case 'sentence':
+                        $deletedCount = LearningMaterial::whereIn('id', $ids)
+                            ->whereJsonContains('metadata->content_type', 'sentence')
+                            ->delete();
+                        break;
                     default:
                         throw new \Exception('不支持的内容类型');
                 }
@@ -979,6 +1135,26 @@ class ContentController extends Controller
                         ];
                     })->toArray();
                     $filename = 'exercises_export_' . date('Y-m-d') . '.csv';
+                    break;
+                case 'sentence':
+                    $data = LearningMaterial::whereJsonContains('metadata->content_type', 'sentence')
+                        ->get()->map(function ($item) {
+                            $content = json_decode($item->content, true);
+                            $metadata = $item->metadata;
+                            return [
+                                'id' => $item->id,
+                                'japanese' => $content['japanese'] ?? '',
+                                'chinese' => $content['chinese'] ?? '',
+                                'difficulty' => $metadata['difficulty'] ?? '',
+                                'category' => $metadata['category'] ?? '',
+                                'subcategory' => $metadata['subcategory'] ?? '',
+                                'style' => $metadata['style'] ?? '',
+                                'length' => $metadata['length'] ?? '',
+                                'tags' => is_array($metadata['tags']) ? implode(';', $metadata['tags']) : '',
+                                'created_at' => $item->created_at
+                            ];
+                        })->toArray();
+                    $filename = 'sentences_export_' . date('Y-m-d') . '.csv';
                     break;
                 default:
                     throw new \Exception('不支持的内容类型');
@@ -1161,6 +1337,79 @@ class ContentController extends Controller
             'explanation' => $data['explanation'] ?? null,
             'points' => $data['points'] ?? 10
         ]);
+    }
+
+    /**
+     * 从数据创建句子/例句
+     */
+    private function createSentenceFromData($data)
+    {
+        \Log::info('开始处理句子数据:', $data);
+        
+        $validator = Validator::make($data, [
+            'japanese' => 'required|string',
+            'chinese' => 'required|string',
+            'difficulty' => 'required|in:N5,N4,N3,N2,N1',
+            'category' => 'nullable|string|max:255',
+            'subcategory' => 'nullable|string|max:255',
+            'style' => 'nullable|string|max:255',
+            'length' => 'nullable|string|max:255',
+            'tags' => 'nullable|array'
+        ]);
+
+        if ($validator->fails()) {
+            $errors = $validator->errors()->all();
+            \Log::error('句子数据验证失败:', $errors);
+            throw new \Exception('句子数据验证失败: ' . implode(', ', $errors));
+        }
+
+        try {
+            // 首先检查是否有现有的课程
+            $existingCourse = DB::table('courses')->first();
+            $courseId = $existingCourse ? $existingCourse->id : null;
+            
+            \Log::info('使用课程ID:', ['course_id' => $courseId]);
+            
+            // 直接使用数据库操作创建学习材料
+            $materialId = DB::table('learning_materials')->insertGetId([
+                'course_id' => $courseId, // 如果没有课程就设为null
+                'title' => mb_substr($data['japanese'], 0, 50) . '...',
+                'type' => 'text',
+                'content' => json_encode([
+                    'japanese' => $data['japanese'],
+                    'chinese' => $data['chinese'],
+                    'category' => $data['category'] ?? null,
+                    'subcategory' => $data['subcategory'] ?? null,
+                    'style' => $data['style'] ?? null,
+                    'length' => $data['length'] ?? null,
+                    'difficulty' => $data['difficulty'],
+                    'tags' => $data['tags'] ?? []
+                ], JSON_UNESCAPED_UNICODE),
+                'metadata' => json_encode([
+                    'content_type' => 'sentence',
+                    'difficulty' => $data['difficulty'],
+                    'category' => $data['category'] ?? null,
+                    'subcategory' => $data['subcategory'] ?? null,
+                    'style' => $data['style'] ?? null,
+                    'length' => $data['length'] ?? null,
+                    'tags' => $data['tags'] ?? []
+                ]),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            \Log::info('句子数据插入成功:', ['id' => $materialId]);
+            return (object)['id' => $materialId];
+            
+        } catch (\Exception $e) {
+            \Log::error('句子创建过程中发生错误:', [
+                'error' => $e->getMessage(),
+                'data' => $data,
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw new \Exception('句子创建失败: ' . $e->getMessage());
+        }
     }
 
     /**

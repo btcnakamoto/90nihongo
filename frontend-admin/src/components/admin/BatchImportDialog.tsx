@@ -69,6 +69,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<any>(null);
+  const [detectedConfig, setDetectedConfig] = useState<any>(null);
 
   // 内容类型配置
   const contentConfig = useMemo(() => {
@@ -131,16 +132,26 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
 
   // 文件上传处理
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('文件选择事件触发', event);
     const file = event.target.files?.[0];
-    if (!file) return;
+    console.log('选择的文件:', file);
+    
+    if (!file) {
+      console.log('没有选择文件');
+      return;
+    }
 
+    console.log('开始处理文件:', file.name);
     setUploadedFile(file);
     
     try {
       const text = await file.text();
       let data: any[] = [];
 
+      console.log('文件读取成功，文件类型:', file.name);
+
       if (file.name.endsWith('.csv')) {
+        console.log('解析CSV文件');
         // 解析CSV文件
         const lines = text.split('\n');
         const headers = lines[0].split(',').map(h => h.trim());
@@ -153,112 +164,208 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
           return row;
         });
       } else if (file.name.endsWith('.json')) {
+        console.log('解析JSON文件');
         // 解析JSON文件
         data = JSON.parse(text);
+      } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        console.log('Excel文件暂不支持客户端解析');
+        toast({
+          title: "Excel文件暂不支持",
+          description: "请将Excel文件另存为CSV格式后再上传",
+          variant: "destructive",
+        });
+        return;
+      } else {
+        console.log('不支持的文件格式');
+        toast({
+          title: "不支持的文件格式",
+          description: "请上传CSV或JSON格式的文件",
+          variant: "destructive",
+        });
+        return;
       }
+
+      console.log('解析得到数据条数:', data.length);
+      console.log('数据样例:', data.slice(0, 2));
 
       setParsedData(data);
       setCurrentStep(1);
-      validateData(data);
+      
+      // 智能检测数据类型
+      const firstItem = data[0];
+      let actualContentType: 'course' | 'material' | 'vocabulary' | 'exercise' | 'sentence' = contentType;
+      let actualConfig = contentConfig;
+      
+      // 检测是否为句子格式（包含japanese和chinese字段）
+      if (firstItem && firstItem.japanese && firstItem.chinese) {
+        actualContentType = 'sentence';
+        // 为句子类型定义配置
+        actualConfig = {
+          title: '句子',
+          icon: contentConfig.icon,
+          color: 'orange',
+          fields: ['japanese', 'chinese', 'category', 'subcategory', 'difficulty', 'style', 'length', 'tags'],
+          requiredFields: ['japanese', 'chinese', 'difficulty'],
+          template: []
+        };
+        console.log('检测到句子格式，使用句子验证模式');
+        
+        toast({
+          title: "检测到句子格式",
+          description: "系统将自动使用句子导入模式进行验证",
+        });
+      }
+      
+      // 保存检测到的配置供后续步骤使用
+      setDetectedConfig(actualConfig);
+      
+      // 内联数据验证逻辑
+      const errors: ValidationResult['errors'] = [];
+      let validRows = 0;
+      let warnings = 0;
+
+      data.forEach((row, index) => {
+        const rowNumber = index + 2; // CSV第一行是标题，所以从第2行开始
+
+        // 检查必填字段
+        actualConfig.requiredFields.forEach(field => {
+          if (!row[field] || (typeof row[field] === 'string' && row[field].trim() === '')) {
+            errors.push({
+              row: rowNumber,
+              column: field,
+              message: `${field} 字段不能为空`,
+              type: 'error'
+            });
+          }
+        });
+
+        // 特定字段验证
+        if (actualContentType === 'course') {
+          if (row.day_number && (isNaN(row.day_number) || row.day_number < 1 || row.day_number > 90)) {
+            errors.push({
+              row: rowNumber,
+              column: 'day_number',
+              message: '天数必须在1-90之间',
+              type: 'error'
+            });
+          }
+          if (row.difficulty && !['beginner', 'intermediate', 'advanced'].includes(row.difficulty)) {
+            errors.push({
+              row: rowNumber,
+              column: 'difficulty',
+              message: '难度必须是 beginner、intermediate 或 advanced',
+              type: 'error'
+            });
+          }
+        } else if (actualContentType === 'vocabulary') {
+          if (row.jlpt_level && !['N5', 'N4', 'N3', 'N2', 'N1'].includes(row.jlpt_level)) {
+            errors.push({
+              row: rowNumber,
+              column: 'jlpt_level',
+              message: 'JLPT等级必须是 N5、N4、N3、N2 或 N1',
+              type: 'error'
+            });
+          }
+        } else if (actualContentType === 'material') {
+          if (row.type && !['video', 'audio', 'text', 'quiz'].includes(row.type)) {
+            errors.push({
+              row: rowNumber,
+              column: 'type',
+              message: '类型必须是 video、audio、text 或 quiz',
+              type: 'error'
+            });
+          }
+        } else if (actualContentType === 'exercise') {
+          if (row.type && !['vocabulary', 'grammar', 'listening', 'speaking'].includes(row.type)) {
+            errors.push({
+              row: rowNumber,
+              column: 'type',
+              message: '类型必须是 vocabulary、grammar、listening 或 speaking',
+              type: 'error'
+            });
+          }
+        } else if (actualContentType === 'sentence') {
+          // 句子特定验证
+          if (row.difficulty && !['N5', 'N4', 'N3', 'N2', 'N1'].includes(row.difficulty)) {
+            errors.push({
+              row: rowNumber,
+              column: 'difficulty',
+              message: 'JLPT等级必须是 N5、N4、N3、N2 或 N1',
+              type: 'error'
+            });
+          }
+          
+          // 检查日语文本长度
+          if (row.japanese && row.japanese.length > 500) {
+            errors.push({
+              row: rowNumber,
+              column: 'japanese',
+              message: '日语文本长度不能超过500字符',
+              type: 'warning'
+            });
+          }
+          
+          // 检查中文文本长度
+          if (row.chinese && row.chinese.length > 500) {
+            errors.push({
+              row: rowNumber,
+              column: 'chinese',
+              message: '中文文本长度不能超过500字符',
+              type: 'warning'
+            });
+          }
+        }
+
+        // 如果这一行没有错误，则计为有效行
+        const rowErrors = errors.filter(e => e.row === rowNumber && e.type === 'error');
+        if (rowErrors.length === 0) {
+          validRows++;
+        }
+
+        // 计算警告数量
+        const rowWarnings = errors.filter(e => e.row === rowNumber && e.type === 'warning');
+        warnings += rowWarnings.length;
+      });
+
+      const result: ValidationResult = {
+        isValid: errors.filter(e => e.type === 'error').length === 0,
+        errors,
+        warnings,
+        validRows,
+        totalRows: data.length
+      };
+
+      console.log('数据验证完成:', result);
+      setValidationResult(result);
+      
+      toast({
+        title: "文件上传成功",
+        description: `已解析 ${data.length} 条数据`,
+      });
     } catch (error) {
+      console.error('文件解析错误:', error);
       toast({
         title: "文件解析失败",
         description: "请检查文件格式是否正确",
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, contentConfig, contentType]);
 
-  // 数据验证
-  const validateData = useCallback((data: any[]) => {
-    const errors: ValidationResult['errors'] = [];
-    let validRows = 0;
-    let warnings = 0;
-
-    data.forEach((row, index) => {
-      const rowNumber = index + 2; // CSV第一行是标题，所以从第2行开始
-
-      // 检查必填字段
-      contentConfig.requiredFields.forEach(field => {
-        if (!row[field] || row[field].trim() === '') {
-          errors.push({
-            row: rowNumber,
-            column: field,
-            message: `${field} 字段不能为空`,
-            type: 'error'
-          });
-        }
-      });
-
-      // 特定字段验证
-      if (contentType === 'course') {
-        if (row.day_number && (isNaN(row.day_number) || row.day_number < 1 || row.day_number > 90)) {
-          errors.push({
-            row: rowNumber,
-            column: 'day_number',
-            message: '天数必须在1-90之间',
-            type: 'error'
-          });
-        }
-        if (row.difficulty && !['beginner', 'intermediate', 'advanced'].includes(row.difficulty)) {
-          errors.push({
-            row: rowNumber,
-            column: 'difficulty',
-            message: '难度必须是 beginner、intermediate 或 advanced',
-            type: 'error'
-          });
-        }
-      } else if (contentType === 'vocabulary') {
-        if (row.jlpt_level && !['N5', 'N4', 'N3', 'N2', 'N1'].includes(row.jlpt_level)) {
-          errors.push({
-            row: rowNumber,
-            column: 'jlpt_level',
-            message: 'JLPT等级必须是 N5、N4、N3、N2 或 N1',
-            type: 'error'
-          });
-        }
-      } else if (contentType === 'material') {
-        if (row.type && !['video', 'audio', 'text', 'quiz'].includes(row.type)) {
-          errors.push({
-            row: rowNumber,
-            column: 'type',
-            message: '类型必须是 video、audio、text 或 quiz',
-            type: 'error'
-          });
-        }
-      } else if (contentType === 'exercise') {
-        if (row.type && !['vocabulary', 'grammar', 'listening', 'speaking'].includes(row.type)) {
-          errors.push({
-            row: rowNumber,
-            column: 'type',
-            message: '类型必须是 vocabulary、grammar、listening 或 speaking',
-            type: 'error'
-          });
-        }
-      }
-
-      // 如果这一行没有错误，则计为有效行
-      const rowErrors = errors.filter(e => e.row === rowNumber && e.type === 'error');
-      if (rowErrors.length === 0) {
-        validRows++;
-      }
-
-      // 计算警告数量
-      const rowWarnings = errors.filter(e => e.row === rowNumber && e.type === 'warning');
-      warnings += rowWarnings.length;
-    });
-
-    const result: ValidationResult = {
-      isValid: errors.filter(e => e.type === 'error').length === 0,
-      errors,
-      warnings,
-      validRows,
-      totalRows: data.length
-    };
-
-    setValidationResult(result);
-    setCurrentStep(2);
-  }, [contentConfig, contentType]);
+  // 智能检测导入类型
+  const detectImportType = useCallback((data: any[]): 'course' | 'material' | 'vocabulary' | 'exercise' | 'sentence' => {
+    if (!data || data.length === 0) return contentType as 'course' | 'material' | 'vocabulary' | 'exercise' | 'sentence';
+    
+    const firstItem = data[0];
+    
+    // 检测是否为句子格式（包含japanese和chinese字段）
+    if (firstItem.japanese && firstItem.chinese) {
+      return 'sentence';
+    }
+    
+    // 默认返回原始类型
+    return contentType as 'course' | 'material' | 'vocabulary' | 'exercise' | 'sentence';
+  }, [contentType]);
 
   // 开始导入
   const handleImport = useCallback(async () => {
@@ -269,6 +376,22 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
     setImportProgress(0);
 
     try {
+      // 检查认证状态
+      const token = localStorage.getItem('admin_token');
+      console.log('认证Token状态:', token ? '存在' : '不存在');
+      
+      // 智能检测实际的导入类型
+      const actualImportType = detectImportType(parsedData);
+      console.log('检测到的导入类型:', actualImportType);
+      console.log('要导入的数据样例:', parsedData.slice(0, 2));
+      
+      if (actualImportType === 'sentence' && contentType === 'material') {
+        toast({
+          title: "检测到句子格式",
+          description: "系统将自动使用句子导入模式，同时创建分类和标签关联",
+        });
+      }
+
       const batchSize = 10; // 每批处理10条数据
       const batches = [];
       
@@ -286,16 +409,27 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
         setImportProgress(progress);
 
         try {
-          const result = await contentService.batchCreate(contentType, batch);
+          console.log(`正在处理批次 ${i + 1}/${batches.length}:`, batch);
+          
+          // 使用智能检测的导入类型
+          const result = await contentService.batchCreate(actualImportType, batch);
+          console.log(`批次 ${i + 1} 响应:`, result);
+          
           if (result.success) {
             successCount += batch.length;
+            console.log(`批次 ${i + 1} 成功`);
           } else {
             errorCount += batch.length;
-            errors.push(`批次 ${i + 1}: ${result.message}`);
+            const errorMsg = `批次 ${i + 1}: ${result.message || '导入失败'}`;
+            errors.push(errorMsg);
+            console.error(errorMsg, result);
           }
-        } catch (error) {
+        } catch (error: any) {
           errorCount += batch.length;
-          errors.push(`批次 ${i + 1}: 导入失败`);
+          const errorMsg = `批次 ${i + 1}: ${error.response?.data?.message || error.message || '导入失败'}`;
+          errors.push(errorMsg);
+          console.error(`批次 ${i + 1} 错误:`, error);
+          console.error('错误响应数据:', error.response?.data);
         }
 
         // 添加延迟避免服务器过载
@@ -315,19 +449,27 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
         onImportComplete();
         toast({
           title: "导入完成",
-          description: `成功导入 ${successCount} 条数据`,
+          description: `成功导入 ${successCount} 条数据${actualImportType === 'sentence' ? '，已自动创建分类和标签关联' : ''}`,
+        });
+      } else if (errors.length > 0) {
+        console.error('所有批次都失败了:', errors);
+        toast({
+          title: "导入失败",
+          description: "所有数据都导入失败，请检查数据格式和网络连接",
+          variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('导入过程中发生错误:', error);
       toast({
         title: "导入失败",
-        description: "导入过程中发生错误",
+        description: error.message || "导入过程中发生错误",
         variant: "destructive",
       });
     } finally {
       setImporting(false);
     }
-  }, [parsedData, validationResult, contentType, onImportComplete, toast]);
+  }, [parsedData, validationResult, detectImportType, contentType, onImportComplete, toast]);
 
   // 下载模板
   const downloadTemplate = useCallback(() => {
@@ -355,6 +497,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
     setImporting(false);
     setImportProgress(0);
     setImportResult(null);
+    setDetectedConfig(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -437,7 +580,10 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                 </div>
 
                 {/* 文件上传区域 */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                >
                   <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                   <p className="text-lg font-medium text-gray-900 mb-2">拖拽文件到此处</p>
                   <p className="text-sm text-gray-500 mb-4">或者点击选择文件</p>
@@ -448,12 +594,102 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                     className="hidden"
                     id="file-upload"
                   />
-                  <label htmlFor="file-upload">
-                    <Button variant="outline" className="cursor-pointer">
-                      <Upload className="h-4 w-4 mr-2" />
-                      选择文件
-                    </Button>
-                  </label>
+                  <Button 
+                    variant="outline" 
+                    className="pointer-events-none"
+                    type="button"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    选择文件
+                  </Button>
+                </div>
+
+                {/* 调试信息区域 */}
+                <div className="bg-gray-50 p-4 rounded-lg text-sm">
+                  <h4 className="font-medium mb-2">调试信息:</h4>
+                  <p>对话框打开: {open ? '是' : '否'}</p>
+                  <p>当前内容类型: {contentType}</p>
+                  <p>当前步骤: {currentStep}</p>
+                  <p>已上传文件: {uploadedFile ? uploadedFile.name : '无'}</p>
+                  <p>解析数据条数: {parsedData.length}</p>
+                  <p>认证Token: {localStorage.getItem('admin_token') ? '存在' : '缺失 ⚠️'}</p>
+                  <p>后端地址: {window.location.origin.replace('8081', '8000')}</p>
+                  <div className="mt-2 space-x-2">
+                    <button 
+                      type="button"
+                      onClick={() => console.log('测试按钮点击正常')}
+                      className="px-3 py-1 bg-blue-500 text-white rounded text-xs"
+                    >
+                      测试点击
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(window.location.origin.replace('8081', '8000') + '/api/admin/content/batch/sentence', {
+                            method: 'GET',
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+                              'Content-Type': 'application/json'
+                            }
+                          });
+                          console.log('API连接测试:', response.status, await response.text());
+                        } catch (e) {
+                          console.log('API连接失败:', e);
+                        }
+                      }}
+                      className="px-3 py-1 bg-green-500 text-white rounded text-xs"
+                    >
+                      测试API
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          // 尝试登录获取token
+                          const response = await fetch(window.location.origin.replace('8081', '8000') + '/api/admin/login', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              account: 'admin@90nihongo.com',
+                              password: 'admin123'
+                            })
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            localStorage.setItem('admin_token', data.token);
+                            localStorage.setItem('admin_info', JSON.stringify(data.admin));
+                            console.log('✅ 自动登录成功:', data);
+                            toast({
+                              title: "自动登录成功",
+                              description: "已获取管理员token，可以进行导入操作了",
+                            });
+                            // 触发重新渲染
+                            window.location.reload();
+                          } else {
+                            console.log('❌ 自动登录失败:', data);
+                            toast({
+                              title: "自动登录失败",
+                              description: data.message || "请手动登录管理员账户",
+                              variant: "destructive",
+                            });
+                          }
+                        } catch (e) {
+                          console.log('❌ 自动登录错误:', e);
+                          toast({
+                            title: "连接失败",
+                            description: "无法连接到后端服务器，请确保后端服务正在运行",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      className="px-3 py-1 bg-yellow-500 text-white rounded text-xs"
+                    >
+                      自动登录
+                    </button>
+                  </div>
                 </div>
 
                 {/* 模板下载 */}
@@ -583,10 +819,10 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            {contentConfig.fields.map(field => (
+                            {(detectedConfig || contentConfig).fields.map(field => (
                               <TableHead key={field}>
                                 {field}
-                                {contentConfig.requiredFields.includes(field) && (
+                                {(detectedConfig || contentConfig).requiredFields.includes(field) && (
                                   <span className="text-red-500 ml-1">*</span>
                                 )}
                               </TableHead>
@@ -596,9 +832,9 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                         <TableBody>
                           {parsedData.slice(0, 10).map((row, index) => (
                             <TableRow key={index}>
-                              {contentConfig.fields.map(field => (
+                              {(detectedConfig || contentConfig).fields.map(field => (
                                 <TableCell key={field}>
-                                  {row[field] || '-'}
+                                  {Array.isArray(row[field]) ? JSON.stringify(row[field]) : (row[field] || '-')}
                                 </TableCell>
                               ))}
                             </TableRow>

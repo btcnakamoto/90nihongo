@@ -15,7 +15,10 @@ import {
   type CreateCourseData,
   type CreateMaterialData,
   type CreateVocabularyData,
-  type CreateExerciseData
+  type CreateExerciseData,
+  type Category,
+  type Tag,
+  type LearningMaterialWithCategories
 } from '@/services/contentService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,6 +40,7 @@ import {
   ExerciseForm 
 } from '@/components/admin/ContentFormComponents';
 import BatchImportDialog from '@/components/admin/BatchImportDialog';import AudioFileManager from '@/components/admin/AudioFileManager';import AudioContentLinker from '@/components/admin/AudioContentLinker';
+import { materialService } from '@/services/materialService';
 
 // 移除了占位符组件，现在使用完整功能的优化组件
 
@@ -58,10 +62,9 @@ const AdminContentManagementOptimized = () => {
 
   const [activeTab, setActiveTab] = useState(getInitialTab());
 
-  // 监听路径变化，自动切换标签页
-  useEffect(() => {
-    setActiveTab(getInitialTab());
-  }, [getInitialTab]);
+  // 数据加载状态追踪 - 移到前面，避免初始化顺序问题
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set());
+  const [tabLoading, setTabLoading] = useState<{[key: string]: boolean}>({});
 
   // API数据状态
   const [stats, setStats] = useState<ContentStats | null>(null);
@@ -73,19 +76,32 @@ const AdminContentManagementOptimized = () => {
   const [vocabulary, setVocabulary] = useState<Vocabulary[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
 
-  // 数据加载状态追踪
-  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set());
-  const [tabLoading, setTabLoading] = useState<{[key: string]: boolean}>({});
+  // 新增分类和标签状态
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [materialsWithCategories, setMaterialsWithCategories] = useState<LearningMaterialWithCategories[]>([]);
 
   // 搜索和筛选状态
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterLevel, setFilterLevel] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterTag, setFilterTag] = useState("all");
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
+  
+  // 新增材料分页状态
+  const [materialsPagination, setMaterialsPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 20,
+    total: 0,
+    from: 0,
+    to: 0
+  });
 
   // 性能优化：防抖搜索
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -154,6 +170,25 @@ const AdminContentManagementOptimized = () => {
     points: 10
   });
 
+  // 加载分类和标签数据
+  const loadCategoriesAndTags = useCallback(async () => {
+    try {
+      const [categoriesResponse, tagsResponse] = await Promise.all([
+        contentService.getCategories(),
+        contentService.getTags()
+      ]);
+
+      if (categoriesResponse.success) {
+        setCategories(categoriesResponse.data);
+      }
+      if (tagsResponse.success) {
+        setTags(tagsResponse.data);
+      }
+    } catch (error) {
+      console.error('Failed to load categories and tags:', error);
+    }
+  }, []);
+
   // 加载概览数据（统计信息）
   const loadOverviewData = useCallback(async () => {
     if (loadedTabs.has('overview')) return;
@@ -181,6 +216,16 @@ const AdminContentManagementOptimized = () => {
     }
   }, [loadedTabs, toast]);
 
+  // 监听路径变化，自动切换标签页
+  useEffect(() => {
+    setActiveTab(getInitialTab());
+  }, [getInitialTab]);
+
+  // 初始化时加载分类和标签
+  useEffect(() => {
+    loadCategoriesAndTags();
+  }, [loadCategoriesAndTags]);
+
   // 加载课程数据
   const loadCoursesData = useCallback(async () => {
     if (loadedTabs.has('courses')) return;
@@ -205,18 +250,44 @@ const AdminContentManagementOptimized = () => {
     }
   }, [loadedTabs, toast]);
 
-  // 加载学习材料数据
+  // 更新材料数据加载方法 - 使用分页API
   const loadMaterialsData = useCallback(async () => {
     if (loadedTabs.has('materials')) return;
     
     try {
       setTabLoading(prev => ({ ...prev, materials: true }));
-      const materialsResponse = await contentService.getMaterials();
+      
+      // 使用materialService的分页API而不是contentService
+      const response = await materialService.getMaterials({
+        page: currentPage,
+        per_page: pageSize,
+        search: debouncedSearchTerm,
+        type: filterType === 'all' ? undefined : filterType,
+        category: filterCategory === 'all' ? undefined : filterCategory,
+        tag: filterTag === 'all' ? undefined : filterTag
+      });
 
-      if (materialsResponse.success) {
-        setMaterials(materialsResponse.data);
-        setLoadedTabs(prev => new Set(prev).add('materials'));
+      if (response.success) {
+        setMaterials(response.data);
+        if (response.pagination) {
+          setMaterialsPagination(response.pagination);
+        }
       }
+      
+      // 同时获取带分类的材料数据
+      const materialsWithCategoriesResponse = await contentService.getMaterialsWithCategories({
+        search: debouncedSearchTerm,
+        type: filterType === 'all' ? undefined : filterType,
+        category: filterCategory === 'all' ? undefined : filterCategory,
+        tag: filterTag === 'all' ? undefined : filterTag,
+        include: 'categories,tags,dialogue'
+      });
+
+      if (materialsWithCategoriesResponse.success) {
+        setMaterialsWithCategories(materialsWithCategoriesResponse.data);
+      }
+      
+      setLoadedTabs(prev => new Set(prev).add('materials'));
     } catch (error) {
       console.error('Failed to load materials data:', error);
       toast({
@@ -227,7 +298,14 @@ const AdminContentManagementOptimized = () => {
     } finally {
       setTabLoading(prev => ({ ...prev, materials: false }));
     }
-  }, [loadedTabs, toast]);
+  }, [loadedTabs, toast, currentPage, pageSize, debouncedSearchTerm, filterType, filterCategory, filterTag]);
+
+  // 新增：监听分页和筛选条件变化时重新加载材料数据
+  useEffect(() => {
+    if (loadedTabs.has('materials')) {
+      loadMaterialsData();
+    }
+  }, [currentPage, debouncedSearchTerm, filterType, filterCategory, filterTag]);
 
   // 加载词汇数据
   const loadVocabularyData = useCallback(async () => {
@@ -777,14 +855,22 @@ const AdminContentManagementOptimized = () => {
                 </div>
               ) : (
                 <OptimizedMaterialsTab
-                  materials={materials}
+                  materials={materialsWithCategories.length > 0 ? materialsWithCategories : materials}
                   searchTerm={debouncedSearchTerm}
                   setSearchTerm={setSearchTerm}
                   filterType={filterType}
                   setFilterType={setFilterType}
-                  currentPage={currentPage}
+                  filterCategory={filterCategory}
+                  setFilterCategory={setFilterCategory}
+                  filterTag={filterTag}
+                  setFilterTag={setFilterTag}
+                  categories={categories}
+                  tags={tags}
+                  currentPage={materialsPagination.current_page}
                   setCurrentPage={setCurrentPage}
-                  pageSize={pageSize}
+                  pageSize={materialsPagination.per_page}
+                  totalPages={materialsPagination.last_page}
+                  totalItems={materialsPagination.total}
                   handleCreateContent={handleCreateContent}
                   handleEdit={handleEdit}
                   handleDelete={handleDelete}

@@ -1,7 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\AuthController;use App\Http\Controllers\Admin\UserController;use App\Http\Controllers\Admin\ContentController;use App\Http\Controllers\Admin\MaterialController;use App\Http\Controllers\Admin\DatabaseBackupController;use App\Http\Controllers\Admin\SubscriptionController;use App\Http\Controllers\Admin\ResourceController;use App\Http\Controllers\Admin\BilibiliExtractorController;
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\MaterialController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
+use App\Http\Controllers\Admin\SubscriptionController;
+use App\Http\Controllers\Admin\ResourceController;
+use App\Http\Controllers\Admin\BilibiliExtractorController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\TagController;
 
 // 登录接口（无需认证）
 Route::post('/login', [AuthController::class, 'login']);
@@ -38,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/materials', [ContentController::class, 'getMaterials']);
         Route::get('/vocabulary', [ContentController::class, 'getVocabulary']);
         Route::get('/exercises', [ContentController::class, 'getExercises']);
+        Route::get('/sentences', [ContentController::class, 'getSentences']);
         
         // 创建内容的路由
         Route::post('/courses', [ContentController::class, 'createCourse']);
@@ -57,6 +68,23 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     
     Route::apiResource('/content', ContentController::class);
+    
+    // 标签管理 - 先定义自定义路由，再定义RESTful资源路由
+    Route::prefix('tags')->group(function () {
+        Route::get('/stats', [TagController::class, 'stats']);
+        Route::get('/popular', [TagController::class, 'popular']);
+        Route::post('/batch-action', [TagController::class, 'batchAction']);
+    });
+    Route::apiResource('/tags', TagController::class);
+
+    // 分类管理
+    Route::prefix('categories')->group(function () {
+        Route::get('/stats', [CategoryController::class, 'stats']);
+        Route::get('/tree', [CategoryController::class, 'tree']);
+        Route::post('/batch-action', [CategoryController::class, 'batchAction']);
+    });
+    Route::apiResource('/categories', CategoryController::class);
+
     
     // 学习材料专门管理路由
     Route::prefix('materials')->group(function () {
@@ -104,6 +132,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/backups/{filename}/download', [DatabaseBackupController::class, 'download']);
         Route::delete('/backups/{filename}', [DatabaseBackupController::class, 'destroy']);
         Route::post('/restore', [DatabaseBackupController::class, 'restore']);
+    });
+    
+    // 系统设置管理
+    Route::prefix('settings')->group(function () {
+        Route::get('/', [SettingsController::class, 'index']);
+        Route::get('/{group}', [SettingsController::class, 'getByGroup']);
+        Route::put('/', [SettingsController::class, 'update']);
+        Route::put('/{group}', [SettingsController::class, 'updateGroup']);
+        Route::post('/initialize', [SettingsController::class, 'initialize']);
+        Route::post('/reset', [SettingsController::class, 'reset']);
     });
     
     // 统计信息

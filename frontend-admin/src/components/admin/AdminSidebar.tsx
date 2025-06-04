@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {  LayoutDashboard,  Users,  BookOpen,  FileText,  Settings,  BarChart,  MessageSquare,  Bell,  LogOut,  ChevronDown,  ChevronUp,  ChevronRight,  User,  Database,  Home,  Shield,  Activity,  Layers,  HelpCircle,  CreditCard,  Calendar,  Volume2,  Languages,  Download,  Globe,  Upload,  Zap,  ClipboardList} from "lucide-react";
+import {  LayoutDashboard,  Users,  BookOpen,  FileText,  Settings,  BarChart,  MessageSquare,  Bell,  LogOut,  ChevronDown,  ChevronUp,  ChevronRight,  User,  Database,  Home,  Shield,  Activity,  Layers,  HelpCircle,  CreditCard,  Calendar,  Volume2,  Languages,  Download,  Globe,  Upload,  Zap,  ClipboardList,  Folder} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -58,16 +58,35 @@ const SidebarItem = ({ icon: Icon, text, href, isActive, count, subItems }: Side
   const hasActiveSubItem = subItems?.some(item => location.pathname === item.href) || false;
   const isMainActive = isActive || hasActiveSubItem;
 
+  // 添加一个ref来跟踪是否是用户手动操作
+  const userInteractionRef = React.useRef(false);
+  const lastActiveSubItemRef = React.useRef(hasActiveSubItem);
+
   const handleClick = (e: React.MouseEvent) => {
     if (hasSubItems) {
       e.preventDefault();
+      // 标记为用户手动操作
+      userInteractionRef.current = true;
       toggleMenu(menuKey);
+      // 延迟重置标记，给toggleMenu足够时间执行
+      setTimeout(() => {
+        userInteractionRef.current = false;
+      }, 100);
     }
   };
 
   // 当子菜单项处于激活状态时，自动展开父菜单
+  // 但只在非用户手动操作且子菜单激活状态发生变化时执行
   React.useEffect(() => {
-    if (hasActiveSubItem && !isExpanded) {
+    const activeSubItemChanged = lastActiveSubItemRef.current !== hasActiveSubItem;
+    lastActiveSubItemRef.current = hasActiveSubItem;
+    
+    // 只有在以下条件都满足时才自动展开：
+    // 1. 不是用户手动操作
+    // 2. 有激活的子菜单项
+    // 3. 菜单当前未展开
+    // 4. 子菜单激活状态发生了变化（避免重复触发）
+    if (!userInteractionRef.current && hasActiveSubItem && !isExpanded && activeSubItemChanged) {
       toggleMenu(menuKey);
     }
   }, [hasActiveSubItem, isExpanded, menuKey, toggleMenu]);
@@ -315,7 +334,7 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
             <SidebarItem 
               icon={BookOpen} 
               text="内容管理" 
-              isActive={activePath.startsWith("/admin/content")}
+              isActive={activePath.startsWith("/admin/content") || activePath.startsWith("/admin/categories")}
               subItems={[
                 {
                   icon: Calendar,
@@ -336,8 +355,61 @@ const AdminSidebar = ({ activePath }: AdminSidebarProps) => {
                   icon: HelpCircle,
                   text: "练习题库",
                   href: "/admin/content/exercises"
+                },
+                {
+                  icon: Folder,
+                  text: "分类管理",
+                  href: "/admin/categories"
                 }
-                            ]}            />            <SidebarItem               icon={MessageSquare}               text="社区管理"               href="/admin/community"               isActive={activePath === "/admin/community"}              count={5}            />            <SidebarItem               icon={Download}               text="资源管理"               isActive={activePath.startsWith("/admin/resources")}              subItems={[                {                  icon: Globe,                  text: "网页抓取",                  href: "/admin/resources/scraping"                },                {                  icon: Upload,                  text: "文件上传",                  href: "/admin/resources/upload"                },                {                  icon: Zap,                  text: "API导入",                  href: "/admin/resources/api-import"                },                {                  icon: Volume2,                  text: "B站提取",                  href: "/admin/resources/bilibili"                },                {                  icon: ClipboardList,                  text: "任务管理",                  href: "/admin/resources/tasks"                }              ]}            />            <SidebarItem               icon={CreditCard}               text="订阅管理"               href="/admin/subscriptions"               isActive={activePath === "/admin/subscriptions"}              count={3}            />          </SidebarSection>
+              ]}
+            />
+            <SidebarItem 
+              icon={MessageSquare} 
+              text="社区管理" 
+              href="/admin/community" 
+              isActive={activePath === "/admin/community"}
+              count={5}
+            />
+            <SidebarItem 
+              icon={Download} 
+              text="资源管理" 
+              isActive={activePath.startsWith("/admin/resources")}
+              subItems={[
+                {
+                  icon: Globe,
+                  text: "网页抓取",
+                  href: "/admin/resources/scraping"
+                },
+                {
+                  icon: Upload,
+                  text: "文件上传",
+                  href: "/admin/resources/upload"
+                },
+                {
+                  icon: Zap,
+                  text: "API导入",
+                  href: "/admin/resources/api-import"
+                },
+                {
+                  icon: Volume2,
+                  text: "B站提取",
+                  href: "/admin/resources/bilibili"
+                },
+                {
+                  icon: ClipboardList,
+                  text: "任务管理",
+                  href: "/admin/resources/tasks"
+                }
+              ]}
+            />
+            <SidebarItem 
+              icon={CreditCard} 
+              text="订阅管理" 
+              href="/admin/subscriptions" 
+              isActive={activePath === "/admin/subscriptions"}
+              count={3}
+            />
+          </SidebarSection>
 
           {/* 数据分析 */}
           <SidebarSection title="数据分析">

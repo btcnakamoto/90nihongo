@@ -1,6 +1,0 @@
-course_id,title,type,content,media_url,duration_minutes,metadata,audio_file
-1,新しい公園が完成しました - 学习材料,audio,東京に新しい公園が完成しました。この公園には美しい花や木がたくさんあります。家族で楽しめる場所です。毎日多くの人が散歩や運動をしています。公園の中には子供の遊び場もあります。,park_news.mp3,5,"{""source"": ""NHK Easy"", ""category"": ""news""}",park_news.mp3
-2,日本の伝統的な祭り - 学习材料,audio,京都で伝統的な祭りが行われました。美しい着物を着た人々が街を歩きました。太鼓の音と踊りがとても素晴らしかったです。観光客もたくさん来て、写真を撮っていました。,festival_news.mp3,5,"{""source"": ""NHK Easy"", ""category"": ""culture""}",festival_news.mp3
-3,新しい電車の路線 - 学习材料,audio,来月、新しい電車の路線が開通します。この路線は都市の中心部と郊外を結びます。通勤がとても便利になります。環境にも優しい電車です。,train_news.mp3,5,"{""source"": ""NHK Easy"", ""category"": ""transportation""}",train_news.mp3
-4,季節の料理教室 - 学习材料,audio,地域センターで料理教室が開かれます。季節の野菜を使った健康的な料理を学べます。初心者の方も歓迎です。美味しい料理を一緒に作りましょう。,cooking_class.mp3,5,"{""source"": ""NHK Easy"", ""category"": ""lifestyle""}",cooking_class.mp3
-5,学校で新しい授業が始まります - 学习材料,audio,小学校でプログラミングの授業が始まりました。子供たちはコンピューターを使って簡単なゲームを作ります。新しい技術を学ぶことは将来のために大切です。,programming_class.mp3,5,"{""source"": ""NHK Easy"", ""category"": ""education""}",programming_class.mp3
