@@ -66,6 +66,7 @@ export default {
 				// Japanese-inspired color palette
 				nihongo: {
 					red: '#D05A6E',      // Traditional Japanese red (aka)
+					blue: '#5B8AC1',     // Japanese indigo (ai-iro) - alias for compatibility
 					indigo: '#5B8AC1',   // Japanese indigo (ai-iro)
 					green: '#7BA696',    // Japanese green (midori)
 					pink: '#F2C0C7',     // Sakura pink

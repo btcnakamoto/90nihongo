@@ -251,12 +251,12 @@ const AdminContentManagementOptimized = () => {
   }, [loadedTabs, toast]);
 
   // 更新材料数据加载方法 - 使用分页API
-  const loadMaterialsData = useCallback(async () => {
-    if (loadedTabs.has('materials')) return;
-    
+  const loadMaterialsData = useCallback(async (forceReload = false) => {
+    if (!forceReload && loadedTabs.has('materials')) return;
+
     try {
       setTabLoading(prev => ({ ...prev, materials: true }));
-      
+
       // 使用materialService的分页API而不是contentService
       const response = await materialService.getMaterials({
         page: currentPage,
@@ -273,7 +273,7 @@ const AdminContentManagementOptimized = () => {
           setMaterialsPagination(response.pagination);
         }
       }
-      
+
       // 同时获取带分类的材料数据
       const materialsWithCategoriesResponse = await contentService.getMaterialsWithCategories({
         search: debouncedSearchTerm,
@@ -286,8 +286,10 @@ const AdminContentManagementOptimized = () => {
       if (materialsWithCategoriesResponse.success) {
         setMaterialsWithCategories(materialsWithCategoriesResponse.data);
       }
-      
-      setLoadedTabs(prev => new Set(prev).add('materials'));
+
+      if (!forceReload) {
+        setLoadedTabs(prev => new Set(prev).add('materials'));
+      }
     } catch (error) {
       console.error('Failed to load materials data:', error);
       toast({
@@ -300,12 +302,58 @@ const AdminContentManagementOptimized = () => {
     }
   }, [loadedTabs, toast, currentPage, pageSize, debouncedSearchTerm, filterType, filterCategory, filterTag]);
 
+  // 新增：专门的材料数据重新加载函数
+  const reloadMaterialsData = useCallback(async () => {
+    try {
+      setTabLoading(prev => ({ ...prev, materials: true }));
+
+      // 使用materialService的分页API
+      const response = await materialService.getMaterials({
+        page: currentPage,
+        per_page: pageSize,
+        search: debouncedSearchTerm,
+        type: filterType === 'all' ? undefined : filterType,
+        category: filterCategory === 'all' ? undefined : filterCategory,
+        tag: filterTag === 'all' ? undefined : filterTag
+      });
+
+      if (response.success) {
+        setMaterials(response.data);
+        if (response.pagination) {
+          setMaterialsPagination(response.pagination);
+        }
+      }
+
+      // 同时获取带分类的材料数据
+      const materialsWithCategoriesResponse = await contentService.getMaterialsWithCategories({
+        search: debouncedSearchTerm,
+        type: filterType === 'all' ? undefined : filterType,
+        category: filterCategory === 'all' ? undefined : filterCategory,
+        tag: filterTag === 'all' ? undefined : filterTag,
+        include: 'categories,tags,dialogue'
+      });
+
+      if (materialsWithCategoriesResponse.success) {
+        setMaterialsWithCategories(materialsWithCategoriesResponse.data);
+      }
+    } catch (error) {
+      console.error('Failed to reload materials data:', error);
+      toast({
+        title: "加载失败",
+        description: "无法加载学习材料数据，请稍后重试",
+        variant: "destructive",
+      });
+    } finally {
+      setTabLoading(prev => ({ ...prev, materials: false }));
+    }
+  }, [currentPage, pageSize, debouncedSearchTerm, filterType, filterCategory, filterTag, toast]);
+
   // 新增：监听分页和筛选条件变化时重新加载材料数据
   useEffect(() => {
-    if (loadedTabs.has('materials')) {
-      loadMaterialsData();
+    if (loadedTabs.has('materials') && activeTab === 'materials') {
+      reloadMaterialsData();
     }
-  }, [currentPage, debouncedSearchTerm, filterType, filterCategory, filterTag]);
+  }, [currentPage, debouncedSearchTerm, filterType, filterCategory, filterTag, activeTab]);
 
   // 加载词汇数据
   const loadVocabularyData = useCallback(async () => {
@@ -867,7 +915,11 @@ const AdminContentManagementOptimized = () => {
                   categories={categories}
                   tags={tags}
                   currentPage={materialsPagination.current_page}
-                  setCurrentPage={setCurrentPage}
+                  setCurrentPage={(page: number) => {
+                    console.log('翻页点击:', page, '当前页:', materialsPagination.current_page);
+                    setCurrentPage(page);
+                    setMaterialsPagination(prev => ({ ...prev, current_page: page }));
+                  }}
                   pageSize={materialsPagination.per_page}
                   totalPages={materialsPagination.last_page}
                   totalItems={materialsPagination.total}

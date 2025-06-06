@@ -177,12 +177,14 @@ const PaginationControls = memo(({
   const [jumpPage, setJumpPage] = useState("");
 
   const handlePrevious = useCallback(() => {
+    console.log('点击上一页:', currentPage, '总页数:', totalPages);
     if (currentPage > 1) {
       onPageChange(currentPage - 1);
     }
-  }, [currentPage, onPageChange]);
+  }, [currentPage, onPageChange, totalPages]);
 
   const handleNext = useCallback(() => {
+    console.log('点击下一页:', currentPage, '总页数:', totalPages);
     if (currentPage < totalPages) {
       onPageChange(currentPage + 1);
     }
@@ -254,7 +256,7 @@ const PaginationControls = memo(({
 
   // 总是显示分页信息，即使只有一页
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-3 border-t bg-gray-50/50">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-3 border-t bg-gray-50/50" style={{ position: 'relative', zIndex: 1 }}>
       {/* 记录信息 */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span>显示第 {startRecord}-{endRecord} 条</span>
@@ -272,6 +274,7 @@ const PaginationControls = memo(({
             onClick={handleFirst}
             disabled={currentPage <= 1}
             className="hidden sm:inline-flex"
+            style={{ pointerEvents: 'auto', zIndex: 10 }}
           >
             首页
           </Button>
@@ -280,6 +283,7 @@ const PaginationControls = memo(({
             size="sm"
             onClick={handlePrevious}
             disabled={currentPage <= 1}
+            style={{ pointerEvents: 'auto', zIndex: 10 }}
           >
             上一页
           </Button>
@@ -292,8 +296,12 @@ const PaginationControls = memo(({
                   key={page}
                   variant={currentPage === page ? "default" : "outline"}
                   size="sm"
-                  onClick={() => onPageChange(page)}
+                  onClick={() => {
+                    console.log('点击页码:', page, '当前页:', currentPage);
+                    onPageChange(page);
+                  }}
                   className="min-w-[2.5rem]"
+                  style={{ pointerEvents: 'auto', zIndex: 10 }}
                 >
                   {page}
                 </Button>
@@ -311,6 +319,7 @@ const PaginationControls = memo(({
             size="sm"
             onClick={handleNext}
             disabled={currentPage >= totalPages}
+            style={{ pointerEvents: 'auto', zIndex: 10 }}
           >
             下一页
           </Button>
@@ -320,6 +329,7 @@ const PaginationControls = memo(({
             onClick={handleLast}
             disabled={currentPage >= totalPages}
             className="hidden sm:inline-flex"
+            style={{ pointerEvents: 'auto', zIndex: 10 }}
           >
             末页
           </Button>

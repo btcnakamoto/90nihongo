@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>90天日语学习平台 - 管理系统</title>
+    <meta name="description" content="90天日语学习平台管理系统，提供用户管理、内容管理、数据分析等功能" />
+    <meta name="keywords" content="日语学习,管理系统,教育平台,学习管理" />
+    
+    <!-- 预加载关键资源 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- 主题色配置 -->
+    <meta name="theme-color" content="#3B82F6" />
+    <meta name="msapplication-TileColor" content="#3B82F6" />
+    
+    <!-- PWA 支持 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="90天日语管理" />
+    
+    <!-- 安全策略 -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- 无 JavaScript 时的提示 -->
+    <noscript>
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, -apple-system, sans-serif;
+        z-index: 9999;
+      ">
+        <div style="text-align: center; padding: 2rem;">
+          <h1 style="color: #374151; margin-bottom: 1rem;">需要启用 JavaScript</h1>
+          <p style="color: #6b7280;">
+            90天日语学习平台管理系统需要 JavaScript 才能正常运行。<br>
+            请在浏览器设置中启用 JavaScript 后刷新页面。
+          </p>
+        </div>
+      </div>
+    </noscript>
+  </body>
+</html>

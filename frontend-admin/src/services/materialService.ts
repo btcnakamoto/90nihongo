@@ -65,6 +65,8 @@ export interface MaterialFilters {
   type?: string;
   course_id?: string;
   status?: string;
+  category?: string;
+  tag?: string;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
   page?: number;
